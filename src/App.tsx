@@ -385,24 +385,30 @@ export default function App() {
 
   // Start Skill Challenge Handler
   const handleStartSkill = (days: number, hours: number) => {
+    // 1. Check if profile is completed
     if (!currentUser.profile_completed) {
-      showToast('Please complete your profile before starting a skill challenge!');
+      showToast('Please complete your profile setup before starting a skill challenge!');
+      setIsDeadlineModalOpen(false);
       setCurrentPage('profile-setup');
       return;
     }
 
+    // 2. Check if user already has an active challenge in progress
     if (activeProgress && activeProgress.status === 'in_progress') {
-      showToast('You already have an active challenge in progress! Complete it first on your Dashboard.');
+      showToast('You already have an active challenge. Finish or wait for it to expire before starting another.');
       setIsDeadlineModalOpen(false);
       setCurrentPage('dashboard');
       return;
     }
 
+    // 3. Calculate deadline_at = current timestamp + (days * 24 + hours) hours
     const targetSkill = skills.find(s => s.id === selectedSkillId) || skills[0];
     const startedAt = new Date();
-    const durationMs = (days * 24 + hours) * 60 * 60 * 1000;
+    const totalDurationHours = Math.max(1, days * 24 + hours);
+    const durationMs = totalDurationHours * 60 * 60 * 1000;
     const deadlineAt = new Date(startedAt.getTime() + durationMs);
 
+    // 4. Insert new user progress row
     const newProgress: UserProgress = {
       id: `progress-${Date.now()}`,
       user_id: currentUser.id,
@@ -417,10 +423,12 @@ export default function App() {
 
     setActiveProgress(newProgress);
     setIsDeadlineModalOpen(false);
-    showToast(`Started ${targetSkill.name} challenge! Deadline: ${days}d ${hours}h.`);
+    showToast(`Started ${targetSkill.name} challenge! Deadline: ${days > 0 ? `${days}d ` : ''}${hours > 0 ? `${hours}h` : ''}`);
+    
+    // 5. Redirect to Dashboard with live countdown
     setCurrentPage('dashboard');
 
-    // Try insert to Supabase
+    // Sync with Supabase user_progress table
     try {
       supabase.from('user_progress').insert({
         user_id: currentUser.id,
@@ -1427,12 +1435,12 @@ export default function App() {
                 className="start-btn cursor-pointer hover:opacity-95 hover:shadow-lg transition-all select-none inline-flex items-center gap-2"
                 onClick={() => {
                   if (!currentUser.profile_completed) {
-                    showToast('Please complete your profile setup before starting a challenge!');
+                    showToast('Please complete your profile setup before starting a skill challenge!');
                     setCurrentPage('profile-setup');
                     return;
                   }
                   if (activeProgress && activeProgress.status === 'in_progress') {
-                    showToast('You already have an active challenge! Finish it on your Dashboard.');
+                    showToast('You already have an active challenge. Finish or wait for it to expire before starting another.');
                     setCurrentPage('dashboard');
                     return;
                   }
@@ -1440,7 +1448,7 @@ export default function App() {
                 }}
                 id="btn-start-skill-roadmap"
               >
-                Set your deadline &amp; start →
+                Start this skill →
               </div>
             </div>
 
