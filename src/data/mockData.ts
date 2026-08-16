@@ -436,9 +436,29 @@ export const initialBadges: Badge[] = [
   }
 ];
 
+export const ADMIN_EMAIL = 'mdsohanali636@gmail.com';
+
 export const initialProfiles: Profile[] = [
   {
+    id: 'user-sohan',
+    email: 'mdsohanali636@gmail.com',
+    full_name: 'Md. Sohan Ali',
+    department: 'CSE',
+    roll_number: '221-15-5001',
+    batch_number: 'Batch 55',
+    fb_link: 'https://facebook.com/mdsohanali',
+    telegram_link: 'https://t.me/sohanali',
+    whatsapp_link: '+8801700000001',
+    profile_completed: true,
+    points: 380,
+    current_streak: 10,
+    longest_streak: 14,
+    is_admin: true,
+    is_banned: false
+  },
+  {
     id: 'user-rafi',
+    email: 'rafi.cse@diu.edu.bd',
     full_name: 'Rafi Ahmed',
     department: 'CSE',
     roll_number: '221-15-4498',
@@ -449,11 +469,12 @@ export const initialProfiles: Profile[] = [
     points: 340,
     current_streak: 8,
     longest_streak: 12,
-    is_admin: true,
+    is_admin: false,
     is_banned: false
   },
   {
     id: 'user-mehedi',
+    email: 'mehedi.cse@diu.edu.bd',
     full_name: 'Mehedi Sadi',
     department: 'CSE',
     roll_number: '221-15-4502',
@@ -468,7 +489,8 @@ export const initialProfiles: Profile[] = [
     is_banned: false
   },
   {
-    id: 'user-current',
+    id: 'user-rakib',
+    email: 'rakib.cse@diu.edu.bd',
     full_name: 'Rakib Hassan',
     department: 'CSE',
     roll_number: '221-15-4521',
@@ -480,11 +502,12 @@ export const initialProfiles: Profile[] = [
     points: 120,
     current_streak: 5,
     longest_streak: 7,
-    is_admin: true,
+    is_admin: false,
     is_banned: false
   },
   {
     id: 'user-tania',
+    email: 'tania.cse@diu.edu.bd',
     full_name: 'Tania Islam',
     department: 'CSE',
     roll_number: '221-15-4560',
@@ -499,6 +522,7 @@ export const initialProfiles: Profile[] = [
   },
   {
     id: 'user-shakil',
+    email: 'shakil.cse@diu.edu.bd',
     full_name: 'Shakil Khan',
     department: 'CSE',
     roll_number: '221-15-4588',
@@ -513,6 +537,7 @@ export const initialProfiles: Profile[] = [
   },
   {
     id: 'user-sumaiya',
+    email: 'sumaiya.swe@diu.edu.bd',
     full_name: 'Sumaiya Akter',
     department: 'SWE',
     roll_number: '222-35-1002',
@@ -528,6 +553,7 @@ export const initialProfiles: Profile[] = [
   },
   {
     id: 'user-fahim',
+    email: 'fahim.swe@diu.edu.bd',
     full_name: 'Fahim Shahriar',
     department: 'SWE',
     roll_number: '222-35-1045',
@@ -542,6 +568,7 @@ export const initialProfiles: Profile[] = [
   },
   {
     id: 'user-anika',
+    email: 'anika.cis@diu.edu.bd',
     full_name: 'Anika Tabassum',
     department: 'CIS',
     roll_number: '223-25-2011',
@@ -557,6 +584,13 @@ export const initialProfiles: Profile[] = [
 ];
 
 export const initialCompletedSkills: Record<string, { skillName: string; icon: string; bg: string; duration: string; completedAt: string }[]> = {
+  'user-sohan': [
+    { skillName: 'HTML', icon: 'H', bg: '#e84393', duration: 'Finished in 1 day 10 hours', completedAt: '1 day ago' },
+    { skillName: 'CSS', icon: 'CS', bg: '#e17055', duration: 'Finished in 2 days 2 hours', completedAt: '3 days ago' },
+    { skillName: 'JavaScript', icon: 'JS', bg: '#00b894', duration: 'Finished in 3 days 12 hours', completedAt: '6 days ago' },
+    { skillName: 'React', icon: 'RE', bg: '#6c5ce7', duration: 'Finished in 4 days 6 hours', completedAt: '10 days ago' },
+    { skillName: 'Git & GitHub', icon: 'GT', bg: '#2d3436', duration: 'Finished in 1 day 4 hours', completedAt: '14 days ago' }
+  ],
   'user-rafi': [
     { skillName: 'HTML', icon: 'H', bg: '#e84393', duration: 'Finished in 1 day 14 hours', completedAt: '2 days ago' },
     { skillName: 'C Programming', icon: 'C', bg: '#0984e3', duration: 'Finished in 2 days 3 hours', completedAt: '5 days ago' },
@@ -574,7 +608,7 @@ export const initialCompletedSkills: Record<string, { skillName: string; icon: s
     { skillName: 'Git & GitHub', icon: 'GT', bg: '#2d3436', duration: 'Finished in 1 day 10 hours', completedAt: '19 days ago' },
     { skillName: 'C Programming', icon: 'C', bg: '#0984e3', duration: 'Finished in 3 days 8 hours', completedAt: '24 days ago' }
   ],
-  'user-current': [
+  'user-rakib': [
     { skillName: 'HTML', icon: 'H', bg: '#e84393', duration: 'Finished in 1 day 14 hours', completedAt: '1 day ago' },
     { skillName: 'C Programming', icon: 'C', bg: '#0984e3', duration: 'Finished in 2 days 3 hours', completedAt: '4 days ago' },
     { skillName: 'JavaScript', icon: 'JS', bg: '#00b894', duration: 'Finished in 3 days 20 hours', completedAt: '7 days ago' },
@@ -589,7 +623,7 @@ const started = new Date(now.getTime() - 22 * 60 * 60 * 1000); // started 22 hou
 
 export const initialActiveProgress: UserProgress = {
   id: 'progress-active-1',
-  user_id: 'user-current',
+  user_id: 'user-sohan',
   skill_id: 'skill-html',
   started_at: started.toISOString(),
   deadline_at: deadline.toISOString(),

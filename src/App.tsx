@@ -10,6 +10,7 @@ import {
 } from './types';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { 
+  ADMIN_EMAIL,
   initialFields, 
   initialSkills, 
   initialRoadmapSteps, 
@@ -50,9 +51,9 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
   // Auth Form State
-  const [authEmail, setAuthEmail] = useState('rakib.cse@diu.edu.bd');
+  const [authEmail, setAuthEmail] = useState(ADMIN_EMAIL);
   const [authPassword, setAuthPassword] = useState('password123');
-  const [authName, setAuthName] = useState('Rakib Hassan');
+  const [authName, setAuthName] = useState('Md. Sohan Ali');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -65,10 +66,10 @@ export default function App() {
   const [completedSkillsMap, setCompletedSkillsMap] = useState(initialCompletedSkills);
   
   // Selected Profile for Public Profile view
-  const [selectedUserId, setSelectedUserId] = useState<string>('user-rafi');
+  const [selectedUserId, setSelectedUserId] = useState<string>('user-sohan');
 
-  // Logged-in User Profile
-  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[2]); // Rakib Hassan
+  // Logged-in User Profile (mdsohanali636@gmail.com is Admin)
+  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]); // Md. Sohan Ali
 
   // Active Challenge (User Progress)
   const [activeProgress, setActiveProgress] = useState<UserProgress | null>(initialActiveProgress);
@@ -97,9 +98,9 @@ export default function App() {
   const [setupDepartment, setSetupDepartment] = useState(currentUser.department);
   const [setupRoll, setSetupRoll] = useState(currentUser.roll_number);
   const [setupBatch, setSetupBatch] = useState(currentUser.batch_number);
-  const [setupFb, setSetupFb] = useState(currentUser.fb_link || 'facebook.com/rakib.hassan');
-  const [setupTelegram, setSetupTelegram] = useState(currentUser.telegram_link || '');
-  const [setupWhatsapp, setSetupWhatsapp] = useState(currentUser.whatsapp_link || '');
+  const [setupFb, setSetupFb] = useState(currentUser.fb_link || 'facebook.com/mdsohanali');
+  const [setupTelegram, setSetupTelegram] = useState(currentUser.telegram_link || 't.me/sohanali');
+  const [setupWhatsapp, setSetupWhatsapp] = useState(currentUser.whatsapp_link || '+8801700000001');
   const [setupAvatarPreview, setSetupAvatarPreview] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
 
@@ -143,7 +144,7 @@ export default function App() {
     };
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, overrideEmail?: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -151,10 +152,14 @@ export default function App() {
         .eq('id', userId)
         .single();
 
+      const emailToCheck = (overrideEmail || data?.email || currentUser.email || '').toLowerCase().trim();
+      const isUserAdmin = emailToCheck === ADMIN_EMAIL.toLowerCase();
+
       if (data && !error) {
         setCurrentUser(prev => ({
           ...prev,
           id: data.id,
+          email: emailToCheck || prev.email,
           full_name: data.full_name || prev.full_name,
           department: data.department || prev.department,
           roll_number: data.roll_number || prev.roll_number,
@@ -165,7 +170,7 @@ export default function App() {
           profile_completed: data.profile_completed ?? prev.profile_completed,
           points: data.points ?? prev.points,
           current_streak: data.current_streak ?? prev.current_streak,
-          is_admin: data.is_admin ?? prev.is_admin,
+          is_admin: isUserAdmin,
           is_banned: data.is_banned ?? prev.is_banned
         }));
       }
@@ -223,6 +228,8 @@ export default function App() {
     setAuthError(null);
     setAuthLoading(true);
 
+    const isUserAdmin = authEmail.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
     try {
       if (authMode === 'signup') {
         if (!authName.trim()) {
@@ -241,32 +248,36 @@ export default function App() {
           }
         });
 
+        const newProfile: Profile = {
+          id: data?.user?.id || `user-${Date.now()}`,
+          email: authEmail.trim().toLowerCase(),
+          full_name: authName.trim(),
+          department: 'CSE',
+          roll_number: '221-15-5000',
+          batch_number: 'Batch 55',
+          profile_completed: false,
+          points: isUserAdmin ? 380 : 0,
+          current_streak: 1,
+          longest_streak: 1,
+          is_admin: isUserAdmin,
+          is_banned: false
+        };
+
+        setCurrentUser(newProfile);
+        setProfiles(prev => [newProfile, ...prev]);
+        setSetupFullName(authName.trim());
+
         if (error) {
-          // If remote supabase error, update local state smoothly for mock preview
           console.warn('Supabase signup notice:', error.message);
-          setCurrentUser(prev => ({
-            ...prev,
-            full_name: authName,
-            profile_completed: false
-          }));
-          setSetupFullName(authName);
           showToast(`Account created for ${authName}!`);
-          setCurrentPage('profile-setup');
         } else {
-          if (data.user) {
-            setCurrentUser(prev => ({
-              ...prev,
-              id: data.user!.id,
-              full_name: authName,
-              profile_completed: false
-            }));
-            setSetupFullName(authName);
-          }
           showToast('Account created successfully! Complete your profile.');
-          setCurrentPage('profile-setup');
         }
+        setCurrentPage('profile-setup');
       } else {
         // Login mode
+        const existingProfile = profiles.find(p => p.email?.toLowerCase() === authEmail.trim().toLowerCase());
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authEmail,
           password: authPassword
@@ -274,14 +285,38 @@ export default function App() {
 
         if (error) {
           console.warn('Supabase login notice:', error.message);
-          // If mock login, let user in smoothly with default active profile
-          showToast(`Welcome back, ${currentUser.full_name}!`);
+          // If mock login, find matching profile or create fallback
+          if (existingProfile) {
+            setCurrentUser({
+              ...existingProfile,
+              is_admin: isUserAdmin
+            });
+            showToast(`Welcome back, ${existingProfile.full_name}! ${isUserAdmin ? '(Admin Access)' : ''}`);
+          } else {
+            const fallbackUser: Profile = {
+              id: `user-${Date.now()}`,
+              email: authEmail.trim().toLowerCase(),
+              full_name: authEmail.split('@')[0],
+              department: 'CSE',
+              roll_number: '221-15-5000',
+              batch_number: 'Batch 55',
+              profile_completed: true,
+              points: isUserAdmin ? 380 : 50,
+              current_streak: 3,
+              longest_streak: 5,
+              is_admin: isUserAdmin,
+              is_banned: false
+            };
+            setCurrentUser(fallbackUser);
+            setProfiles(prev => [fallbackUser, ...prev]);
+            showToast(`Welcome back! ${isUserAdmin ? '(Admin Access)' : ''}`);
+          }
           setCurrentPage('discover');
         } else {
           if (data.user) {
-            await fetchUserProfile(data.user.id);
+            await fetchUserProfile(data.user.id, authEmail);
           }
-          showToast(`Welcome back!`);
+          showToast(`Welcome back! ${isUserAdmin ? '(Admin Access)' : ''}`);
           setCurrentPage('discover');
         }
       }
@@ -606,7 +641,7 @@ export default function App() {
   const targetUserCompletedSkills = completedSkillsMap[targetProfile.id] || [];
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7] pb-24 relative selection:bg-[#6c5ce7] selection:text-white">
+    <div className="min-h-screen bg-[#f4f5f7] pb-12 relative selection:bg-[#6c5ce7] selection:text-white">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1579,117 +1614,139 @@ export default function App() {
         <div className="page" id="page-admin">
           <div className="page-tag">PAGE 9 — ADMIN PANEL</div>
 
-          <div className="content">
-            
-            <div className="admin-header-row">
-              <div className="section-title" style={{ margin: 0 }}>Admin dashboard</div>
-              <div 
-                className="admin-add-btn cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5 select-none"
-                onClick={() => {
-                  setEditingSkill(null);
-                  setIsSkillModalOpen(true);
-                }}
-                id="btn-admin-add-skill"
-              >
-                <Plus className="w-4 h-4" />
-                Add new skill
+          {!currentUser.is_admin ? (
+            <div className="content py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 text-red-500 mx-auto flex items-center justify-center mb-4">
+                <Shield className="w-8 h-8" />
               </div>
+              <h2 className="text-2xl font-black text-[#1a1c2e] mb-2">Admin Access Restricted</h2>
+              <p className="text-[#8a8ca3] text-sm max-w-md mx-auto mb-6">
+                Only the designated system administrator (<span className="text-[#6c5ce7] font-semibold">{ADMIN_EMAIL}</span>) has permission to manage platform skills, tracks, and student accounts.
+              </p>
+              <button
+                onClick={() => setCurrentPage('discover')}
+                className="px-6 py-2.5 bg-[#6c5ce7] hover:opacity-90 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#6c5ce7]/20"
+              >
+                Return to Home
+              </button>
             </div>
-
-            {/* Admin Stats Grid */}
-            <div className="admin-stats-grid">
-              <div className="admin-stat-card">
-                <div className="icon-wrap" style={{ background: '#6c5ce7' }}>👥</div>
-                <div className="val">{profiles.length * 16}</div>
-                <div className="lbl">Total users</div>
-              </div>
-              <div className="admin-stat-card">
-                <div className="icon-wrap" style={{ background: '#00b894' }}>⚡</div>
-                <div className="val">34</div>
-                <div className="lbl">Active challenges right now</div>
-              </div>
-              <div className="admin-stat-card">
-                <div className="icon-wrap" style={{ background: '#e17055' }}>🔥</div>
-                <div className="val">HTML</div>
-                <div className="lbl">Most popular skill</div>
-              </div>
-              <div className="admin-stat-card">
-                <div className="icon-wrap" style={{ background: '#fdcb6e' }}>🏆</div>
-                <div className="val">312</div>
-                <div className="lbl">Total completions</div>
-              </div>
-            </div>
-
-            {/* Admin Tabs */}
-            <div className="admin-tabs">
-              <div 
-                className={`admin-tab cursor-pointer select-none ${adminTab === 'users' ? 'active' : ''}`}
-                onClick={() => setAdminTab('users')}
-              >
-                Users ({profiles.length})
-              </div>
-              <div 
-                className={`admin-tab cursor-pointer select-none ${adminTab === 'skills' ? 'active' : ''}`}
-                onClick={() => setAdminTab('skills')}
-              >
-                Fields &amp; skills ({skills.length})
-              </div>
-              <div 
-                className={`admin-tab cursor-pointer select-none ${adminTab === 'steps' ? 'active' : ''}`}
-                onClick={() => setAdminTab('steps')}
-              >
-                Roadmap steps
-              </div>
-            </div>
-
-            {/* TAB 1: USERS TABLE */}
-            {adminTab === 'users' && (
-              <div className="admin-table">
-                <div className="admin-table-head">
-                  <div>Name</div>
-                  <div>Department</div>
-                  <div>Batch</div>
-                  <div>Points</div>
-                  <div>Status</div>
-                  <div>Actions</div>
+          ) : (
+            <div className="content">
+              
+              <div className="admin-header-row">
+                <div className="section-title" style={{ margin: 0 }}>Admin dashboard</div>
+                <div 
+                  className="admin-add-btn cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5 select-none"
+                  onClick={() => {
+                    setEditingSkill(null);
+                    setIsSkillModalOpen(true);
+                  }}
+                  id="btn-admin-add-skill"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add new skill
                 </div>
-
-                {profiles.map((p) => (
-                  <div key={p.id} className="admin-table-row">
-                    <div className="font-bold flex items-center gap-2">
-                      {p.full_name}
-                      {p.is_admin && (
-                        <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-extrabold">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <div>{p.department}</div>
-                    <div>{p.batch_number}</div>
-                    <div className="font-bold">{p.points}</div>
-                    <div>
-                      <span className={`admin-badge-role ${p.is_banned ? 'bg-red-100 text-red-600' : ''}`}>
-                        {p.is_banned ? 'Banned' : 'Active'}
-                      </span>
-                    </div>
-                    <div>
-                      <button 
-                        className="admin-action-btn hover:bg-slate-100"
-                        onClick={() => handleOpenUserProfile(p.id)}
-                      >
-                        View
-                      </button>
-                      <button 
-                        className={`admin-action-btn danger hover:bg-red-50`}
-                        onClick={() => handleBanToggle(p.id)}
-                      >
-                        {p.is_banned ? 'Unban' : 'Ban'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
               </div>
-            )}
+
+              {/* Admin Stats Grid */}
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card">
+                  <div className="icon-wrap" style={{ background: '#6c5ce7' }}>👥</div>
+                  <div className="val">{profiles.length * 16}</div>
+                  <div className="lbl">Total users</div>
+                </div>
+                <div className="admin-stat-card">
+                  <div className="icon-wrap" style={{ background: '#00b894' }}>⚡</div>
+                  <div className="val">34</div>
+                  <div className="lbl">Active challenges right now</div>
+                </div>
+                <div className="admin-stat-card">
+                  <div className="icon-wrap" style={{ background: '#e17055' }}>🔥</div>
+                  <div className="val">HTML</div>
+                  <div className="lbl">Most popular skill</div>
+                </div>
+                <div className="admin-stat-card">
+                  <div className="icon-wrap" style={{ background: '#fdcb6e' }}>🏆</div>
+                  <div className="val">312</div>
+                  <div className="lbl">Total completions</div>
+                </div>
+              </div>
+
+              {/* Admin Tabs */}
+              <div className="admin-tabs">
+                <div 
+                  className={`admin-tab cursor-pointer select-none ${adminTab === 'users' ? 'active' : ''}`}
+                  onClick={() => setAdminTab('users')}
+                >
+                  Users ({profiles.length})
+                </div>
+                <div 
+                  className={`admin-tab cursor-pointer select-none ${adminTab === 'skills' ? 'active' : ''}`}
+                  onClick={() => setAdminTab('skills')}
+                >
+                  Fields &amp; skills ({skills.length})
+                </div>
+                <div 
+                  className={`admin-tab cursor-pointer select-none ${adminTab === 'steps' ? 'active' : ''}`}
+                  onClick={() => setAdminTab('steps')}
+                >
+                  Roadmap steps
+                </div>
+              </div>
+
+              {/* TAB 1: USERS TABLE */}
+              {adminTab === 'users' && (
+                <div className="admin-table">
+                  <div className="admin-table-head">
+                    <div>Name &amp; Email</div>
+                    <div>Department</div>
+                    <div>Batch</div>
+                    <div>Points</div>
+                    <div>Status</div>
+                    <div>Actions</div>
+                  </div>
+
+                  {profiles.map((p) => (
+                    <div key={p.id} className="admin-table-row">
+                      <div className="flex flex-col">
+                        <div className="font-bold flex items-center gap-2">
+                          {p.full_name}
+                          {p.is_admin && (
+                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-0.5">
+                              <Shield className="w-3 h-3" /> Admin
+                            </span>
+                          )}
+                        </div>
+                        {p.email && (
+                          <div className="text-[11px] text-[#8a8ca3] font-normal">{p.email}</div>
+                        )}
+                      </div>
+                      <div>{p.department}</div>
+                      <div>{p.batch_number}</div>
+                      <div className="font-bold">{p.points}</div>
+                      <div>
+                        <span className={`admin-badge-role ${p.is_banned ? 'bg-red-100 text-red-600' : ''}`}>
+                          {p.is_banned ? 'Banned' : 'Active'}
+                        </span>
+                      </div>
+                      <div>
+                        <button 
+                          className="admin-action-btn hover:bg-slate-100"
+                          onClick={() => handleOpenUserProfile(p.id)}
+                        >
+                          View
+                        </button>
+                        <button 
+                          className={`admin-action-btn danger hover:bg-red-50`}
+                          onClick={() => handleBanToggle(p.id)}
+                        >
+                          {p.is_banned ? 'Unban' : 'Ban'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
             {/* TAB 2: FIELDS & SKILLS */}
             {adminTab === 'skills' && (
@@ -1795,7 +1852,8 @@ export default function App() {
               </div>
             )}
 
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1811,7 +1869,7 @@ export default function App() {
       />
 
       {/* Admin Skill Add/Edit Modal */}
-      <SkillModal
+      <SkillModal 
         isOpen={isSkillModalOpen}
         onClose={() => {
           setIsSkillModalOpen(false);
@@ -1823,7 +1881,7 @@ export default function App() {
       />
 
       {/* Admin Step Add Modal */}
-      <StepModal
+      <StepModal 
         isOpen={isStepModalOpen}
         onClose={() => setIsStepModalOpen(false)}
         onSave={handleAddStep}
@@ -1831,82 +1889,6 @@ export default function App() {
         skillName={currentSkill.name}
         nextOrder={currentSkillSteps.length + 1}
       />
-
-      {/* ========================================================================= */}
-      {/* QUICK PREVIEW DOCK (AT THE BOTTOM FOR INSTANT PAGE SWITCHING) */}
-      {/* ========================================================================= */}
-      <div className="page-switch-dock" id="quick-page-dock">
-        <span className="title">Preview Pages:</span>
-        <button 
-          className={`page-switch-btn ${(currentPage === 'login' || currentPage === 'signup') && authMode === 'login' ? 'active' : ''}`}
-          onClick={() => {
-            setCurrentPage('login');
-            setAuthMode('login');
-          }}
-          id="dock-page-1"
-        >
-          1. Login
-        </button>
-        <button 
-          className={`page-switch-btn ${(currentPage === 'login' || currentPage === 'signup') && authMode === 'signup' ? 'active' : ''}`}
-          onClick={() => {
-            setCurrentPage('login');
-            setAuthMode('signup');
-          }}
-          id="dock-page-2"
-        >
-          2. Sign Up
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'profile-setup' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('profile-setup')}
-          id="dock-page-3"
-        >
-          3. Profile Setup
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'discover' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('discover')}
-          id="dock-page-4"
-        >
-          4. Discover
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'roadmap' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('roadmap')}
-          id="dock-page-5"
-        >
-          5. Roadmap
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('dashboard')}
-          id="dock-page-6"
-        >
-          6. Dashboard
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'leaderboard' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('leaderboard')}
-          id="dock-page-7"
-        >
-          7. Leaderboard
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'profile' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('profile')}
-          id="dock-page-8"
-        >
-          8. Profile
-        </button>
-        <button 
-          className={`page-switch-btn ${currentPage === 'admin' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('admin')}
-          id="dock-page-9"
-        >
-          9. Admin
-        </button>
-      </div>
 
     </div>
   );

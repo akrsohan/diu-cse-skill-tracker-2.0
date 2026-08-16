@@ -57,28 +57,13 @@ body {
 
 .navlinks {
   display: flex;
-  font-size: 14px;
-  color: #c9cadb;
+  align-items: center;
+  gap: 8px;
 }
 
-.navlinks span {
-  margin-right: 32px;
-  cursor: pointer;
-  transition: color 0.15s;
+.navlinks button {
+  white-space: nowrap;
   user-select: none;
-}
-
-.navlinks span:last-child {
-  margin-right: 0;
-}
-
-.navlinks span:hover {
-  color: #fff;
-}
-
-.navlinks .active {
-  color: #fff;
-  font-weight: 600;
 }
 
 .avatar-nav {
@@ -106,17 +91,7 @@ body {
 }
 
 .page-tag {
-  position: absolute;
-  top: 14px;
-  right: 24px;
-  background: #1a1c2e;
-  color: #fff;
-  font-size: 11px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
-  z-index: 10;
-  font-weight: 700;
+  display: none;
 }
 
 .section-title {
@@ -1463,60 +1438,6 @@ body {
 .dark-switch b {
   color: #37f0ff;
   font-weight: 700;
-}
-
-
-/* Quick Page Navigator Switcher at the bottom */
-.page-switch-dock {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1c2e;
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  padding: 6px 12px;
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 1000;
-  max-width: 95vw;
-  overflow-x: auto;
-}
-
-.page-switch-dock span.title {
-  color: #a29bfe;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-right: 6px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-.page-switch-btn {
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 16px;
-  background: transparent;
-  color: #c9cadb;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-.page-switch-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-}
-
-.page-switch-btn.active {
-  background: #6c5ce7;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
 }
 
 /* Responsive adjust */
