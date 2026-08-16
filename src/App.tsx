@@ -21,6 +21,8 @@ import {
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
 import { DeadlineModal } from './components/DeadlineModal';
+import { AddTimeModal } from './components/AddTimeModal';
+import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, StepModal } from './components/AdminModals';
 import { 
   CheckCircle2, 
@@ -74,14 +76,42 @@ export default function App() {
   // Logged-in User Profile (mdsohanali636@gmail.com is Admin)
   const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]); // Md. Sohan Ali
 
-  // Active Challenge (User Progress)
-  const [activeProgress, setActiveProgress] = useState<UserProgress | null>(initialActiveProgress);
+  // Active Challenge (User Progress) - Persisted in localStorage so deletions/cancellations persist across page refreshes
+  const [activeProgress, setActiveProgress] = useState<UserProgress | null>(() => {
+    try {
+      const saved = localStorage.getItem('skill_active_progress');
+      if (saved === 'null' || saved === 'cancelled' || saved === 'deleted') {
+        return null;
+      }
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Error loading active progress from localStorage:', e);
+    }
+    return null;
+  });
+
+  // Keep active progress synced to localStorage
+  useEffect(() => {
+    try {
+      if (activeProgress && activeProgress.status === 'in_progress') {
+        localStorage.setItem('skill_active_progress', JSON.stringify(activeProgress));
+      } else {
+        localStorage.setItem('skill_active_progress', 'null');
+      }
+    } catch (e) {
+      console.error('Error saving active progress to localStorage:', e);
+    }
+  }, [activeProgress]);
 
   // Selected Skill for Roadmap view
   const [selectedSkillId, setSelectedSkillId] = useState<string>('skill-html');
 
   // Modals
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
+  const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
@@ -443,6 +473,57 @@ export default function App() {
     }
   };
 
+  // Add Extra Time to Active Challenge
+  const handleAddExtraTime = (extraDays: number, extraHours: number) => {
+    if (!activeProgress || activeProgress.status !== 'in_progress') return;
+
+    const currentDeadline = new Date(activeProgress.deadline_at);
+    const extraMs = (extraDays * 24 + extraHours) * 60 * 60 * 1000;
+    const newDeadline = new Date(currentDeadline.getTime() + extraMs);
+
+    const updatedProgress: UserProgress = {
+      ...activeProgress,
+      deadline_at: newDeadline.toISOString()
+    };
+
+    setActiveProgress(updatedProgress);
+    showToast(`Added ${extraDays > 0 ? `${extraDays}d ` : ''}${extraHours > 0 ? `${extraHours}h` : ''} to your active challenge!`);
+
+    try {
+      supabase.from('user_progress').update({
+        deadline_at: newDeadline.toISOString()
+      }).eq('id', activeProgress.id);
+    } catch {
+      // Handled locally
+    }
+  };
+
+  // Cancel Active Challenge Handler (Fully deletes row, no points deducted)
+  const handleCancelChallenge = async () => {
+    if (!activeProgress) return;
+    const progressId = activeProgress.id;
+    const targetSkill = skills.find(s => s.id === activeProgress.skill_id);
+    const skillName = targetSkill?.name || 'Skill';
+
+    // 1. Delete from local state and localStorage immediately
+    setActiveProgress(null);
+    try {
+      localStorage.setItem('skill_active_progress', 'null');
+      localStorage.removeItem('skill_active_progress');
+    } catch (e) {
+      console.error(e);
+    }
+    setIsCancelModalOpen(false);
+    showToast(`Challenge for ${skillName} has been cancelled.`);
+
+    // 2. Delete row from Supabase user_progress (no failed records kept, no points deducted)
+    try {
+      await supabase.from('user_progress').delete().eq('id', progressId);
+    } catch (err) {
+      console.error('Failed to delete progress row:', err);
+    }
+  };
+
   // Complete Active Challenge
   const handleCompleteActiveChallenge = () => {
     if (!activeProgress || activeProgress.status !== 'in_progress') return;
@@ -451,12 +532,15 @@ export default function App() {
     const completedAt = new Date().toISOString();
     const awarded = 10;
 
-    // Update active challenge state
-    setActiveProgress({
-      ...activeProgress,
-      status: 'completed',
-      completed_at: completedAt
-    });
+    // Clear active challenge
+    const previousProgressId = activeProgress.id;
+    setActiveProgress(null);
+    try {
+      localStorage.setItem('skill_active_progress', 'null');
+      localStorage.removeItem('skill_active_progress');
+    } catch (e) {
+      console.error(e);
+    }
 
     // Update user points and streak
     const newPoints = currentUser.points + awarded;
@@ -504,7 +588,7 @@ export default function App() {
       supabase.from('user_progress').update({
         status: 'completed',
         completed_at: completedAt
-      }).eq('id', activeProgress.id);
+      }).eq('id', previousProgressId);
 
       supabase.from('profiles').update({
         points: newPoints,
@@ -1045,6 +1129,184 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Active Challenge Card (Rendered only when activeProgress is in_progress) */}
+                {activeProgress && activeProgress.status === 'in_progress' && (() => {
+                  const activeSkill = skills.find(s => s.id === activeProgress.skill_id) || skills[0];
+                  const steps = roadmapSteps[activeProgress.skill_id] || [];
+                  const completedStepCount = (activeProgress.steps_completed || []).length;
+                  const totalStepCount = steps.length;
+
+                  return (
+                    <div 
+                      className="mb-8 bg-gradient-to-br from-[#161828] via-[#222646] to-[#161828] text-white border-2 border-[#37f0ff]/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-3 duration-300"
+                      id="discover-active-challenge-card"
+                    >
+                      {/* Background decorative glow */}
+                      <div className="absolute top-0 right-0 w-80 h-80 bg-[#6c5ce7]/25 rounded-full blur-3xl pointer-events-none -mr-24 -mt-24"></div>
+                      <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#37f0ff]/20 rounded-full blur-3xl pointer-events-none -ml-24 -mb-24"></div>
+
+                      <div className="relative z-10 flex flex-col gap-6">
+                        {/* Header: Skill Name, Status Badge, and Points info */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div 
+                              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-xl shrink-0 border-2 border-white/20"
+                              style={{ background: activeSkill.bg_color || '#6c5ce7' }}
+                            >
+                              {activeSkill.icon || activeSkill.name.slice(0, 2)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="text-xs font-black tracking-wider uppercase px-3 py-1 rounded-full bg-[#37f0ff]/20 text-[#37f0ff] border border-[#37f0ff]/50 shadow-xs">
+                                  Active Challenge
+                                </span>
+                                <span className="text-xs sm:text-sm text-amber-300 font-bold flex items-center gap-1.5 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-300/30">
+                                  <Trophy className="w-4 h-4" /> +10 pts on finish
+                                </span>
+                              </div>
+                              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1.5 leading-tight tracking-tight">
+                                {activeSkill.name} Challenge
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* Quick Add Time & Dashboard jump */}
+                          <div className="flex items-center gap-2.5 self-start sm:self-center">
+                            <button
+                              onClick={() => setIsAddTimeModalOpen(true)}
+                              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border border-white/20 hover:scale-102"
+                              id="btn-discover-add-time"
+                              title="Add more time"
+                            >
+                              <Plus className="w-4 h-4 text-[#37f0ff]" />
+                              Add Time
+                            </button>
+                            <button
+                              onClick={() => setCurrentPage('dashboard')}
+                              className="px-4 py-2.5 bg-[#6c5ce7] hover:bg-[#5b4bc4] text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg hover:scale-102"
+                              id="btn-discover-goto-dashboard"
+                            >
+                              Dashboard <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Live Countdown & Progress Bar */}
+                        <div className="bg-black/40 border border-white/15 rounded-2xl p-5 sm:p-6 backdrop-blur-md flex flex-col gap-3.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-white/80">
+                              <Clock className="w-4 h-4 text-[#37f0ff]" /> Time Remaining
+                            </div>
+                            <div className="text-2xl sm:text-3xl font-mono font-black text-white tracking-wider">
+                              {timeRemaining.isExpired ? (
+                                <span className="text-red-400">Deadline reached!</span>
+                              ) : (
+                                `${timeRemaining.days}d ${String(timeRemaining.hours).padStart(2, '0')}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s left`
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Dynamic Progress Bar */}
+                          <div className="w-full bg-white/15 rounded-full h-3 overflow-hidden p-0.5">
+                            <div 
+                              className="bg-gradient-to-r from-[#37f0ff] via-[#806af5] to-[#6c5ce7] h-full rounded-full transition-all duration-1000 shadow-md"
+                              style={{ width: `${timeRemaining.percent}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs sm:text-sm text-white/70 font-semibold">
+                            <span>Elapsed: {timeRemaining.percent}%</span>
+                            <span>Completed: {completedStepCount}/{totalStepCount} milestones</span>
+                          </div>
+                        </div>
+
+                        {/* Roadmap Steps Checklist */}
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white/90">
+                              Roadmap Milestones &amp; Checklist
+                            </span>
+                            <span className="text-xs text-[#37f0ff] font-semibold">
+                              Click any step to mark complete
+                            </span>
+                          </div>
+
+                          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                            {steps.length > 0 ? (
+                              steps.map((st, idx) => {
+                                const isDone = (activeProgress.steps_completed || []).includes(st.step_order);
+                                return (
+                                  <div 
+                                    key={st.id}
+                                    onClick={() => handleToggleStep(st.step_order)}
+                                    className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border-2 ${
+                                      isDone 
+                                        ? 'bg-emerald-500/20 border-emerald-400/50 text-white font-bold shadow-sm' 
+                                        : 'bg-white/5 border-white/10 text-white/90 hover:bg-white/10 hover:border-white/20'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3.5 min-w-0 pr-3">
+                                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs shrink-0 font-black ${
+                                        isDone 
+                                          ? 'bg-emerald-400 text-[#1a1c2e] border-emerald-400 shadow-sm' 
+                                          : 'border-white/40 text-white/80'
+                                      }`}>
+                                        {isDone ? '✓' : idx + 1}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="text-sm sm:text-base font-bold text-white leading-snug truncate">
+                                          {st.title}
+                                        </div>
+                                        {st.description && (
+                                          <div className="text-xs sm:text-sm text-white/70 mt-0.5 line-clamp-1">
+                                            {st.description}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <span className={`text-xs font-black px-3 py-1 rounded-xl shrink-0 uppercase tracking-wider ${
+                                      isDone ? 'bg-emerald-400 text-[#1a1c2e] shadow-xs' : 'bg-white/10 text-white/70'
+                                    }`}>
+                                      {isDone ? 'Done' : 'Pending'}
+                                    </span>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-sm text-white/60 italic py-2">No steps listed for this roadmap.</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom Actions: Cancel challenge and Mark complete */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/15">
+                          {/* Cancel Challenge Button */}
+                          <button
+                            type="button"
+                            onClick={() => setIsCancelModalOpen(true)}
+                            className="w-full sm:w-auto px-5 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-200 border-2 border-red-500/40 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            id="btn-cancel-challenge-discover"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                            Cancel challenge
+                          </button>
+
+                          {/* Complete Challenge Button */}
+                          <button
+                            type="button"
+                            onClick={handleCompleteActiveChallenge}
+                            className="w-full sm:w-auto px-6 py-3 bg-emerald-400 hover:bg-emerald-300 text-[#1a1c2e] font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-102"
+                            id="btn-complete-challenge-discover"
+                          >
+                            <CheckCircle2 className="w-5 h-5 text-[#1a1c2e]" />
+                            Mark as complete (+10 pts)
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* How do you want to explore? */}
                 <div className="section-title">How do you want to explore?</div>
                 <div className="choice-grid">
@@ -1471,75 +1733,119 @@ export default function App() {
                 
                 {/* Active Challenge Card */}
                 {activeProgress && activeProgress.status === 'in_progress' ? (
-                  <div className="timer-card shadow-xl relative overflow-hidden">
-                    <div className="timer-top">
+                  <div className="bg-gradient-to-br from-[#fdcb6e] via-[#f39c12] to-[#e17055] text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden flex flex-col gap-5">
+                    {/* Header */}
+                    <div className="flex justify-between items-start gap-3">
                       <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700 }}>
-                          {(skills.find(s => s.id === activeProgress.skill_id)?.name || 'HTML')} challenge
+                        <div className="text-xl sm:text-2xl font-black text-white leading-tight">
+                          {(skills.find(s => s.id === activeProgress.skill_id)?.name || 'HTML')} Challenge
                         </div>
-                        <div style={{ fontSize: '12px', opacity: 0.85, marginTop: '3px' }}>
-                          Started recently · Target: 10 points
+                        <div className="text-xs sm:text-sm text-white/90 font-medium mt-1">
+                          Started recently · Target: <b className="text-white font-extrabold">+10 points</b>
                         </div>
                       </div>
-                      <div className="badge-pill">In progress</div>
+                      <div className="bg-white/30 backdrop-blur-sm px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/40 shadow-xs">
+                        In progress
+                      </div>
                     </div>
 
                     {/* Live countdown */}
-                    <div className="timer-big">
-                      {timeRemaining.isExpired ? (
-                        <span className="text-red-100">Deadline reached!</span>
-                      ) : (
-                        `${timeRemaining.days}d ${String(timeRemaining.hours).padStart(2, '0')}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s left`
-                      )}
-                    </div>
+                    <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20">
+                      <div className="text-xs font-bold uppercase tracking-wider text-white/80 mb-1 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Time Remaining
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black font-mono tracking-wide text-white">
+                        {timeRemaining.isExpired ? (
+                          <span className="text-red-200">Deadline reached!</span>
+                        ) : (
+                          `${timeRemaining.days}d ${String(timeRemaining.hours).padStart(2, '0')}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s left`
+                        )}
+                      </div>
 
-                    {/* Dynamic progress bar */}
-                    <div className="progressbar">
-                      <div 
-                        className="fill transition-all duration-1000" 
-                        style={{ width: `${timeRemaining.percent}%` }}
-                      ></div>
+                      {/* Dynamic progress bar */}
+                      <div className="w-full bg-black/20 rounded-full h-2.5 overflow-hidden mt-3 p-0.5">
+                        <div 
+                          className="bg-white h-full rounded-full transition-all duration-1000 shadow-sm" 
+                          style={{ width: `${timeRemaining.percent}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-white/80 font-semibold mt-1.5">
+                        <span>Elapsed: {timeRemaining.percent}%</span>
+                        <span>Milestones: {(activeProgress.steps_completed || []).length}/{(roadmapSteps[activeProgress.skill_id] || []).length}</span>
+                      </div>
                     </div>
 
                     {/* Interactive Step Checklist */}
-                    <div className="mt-4 pt-3 border-t border-white/20">
-                      <div className="text-[11px] font-bold uppercase tracking-wider opacity-90 mb-2">
-                        Milestone Checklist
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs sm:text-sm font-black uppercase tracking-wider text-white/90">
+                          Milestone Checklist
+                        </div>
+                        <div className="text-xs text-white/80 font-medium">
+                          Click step to toggle
+                        </div>
                       </div>
-                      <div className="space-y-1.5">
+
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                         {(roadmapSteps[activeProgress.skill_id] || []).map((st, i) => {
                           const isDone = (activeProgress.steps_completed || []).includes(st.step_order);
                           return (
                             <div 
                               key={st.id}
-                              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                                isDone ? 'bg-white/25 text-white font-bold' : 'bg-black/15 text-white/90 hover:bg-black/25'
+                              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer transition-all border ${
+                                isDone 
+                                  ? 'bg-white/30 border-white/50 text-white font-bold shadow-xs' 
+                                  : 'bg-black/15 border-white/15 text-white hover:bg-black/25'
                               }`}
                               onClick={() => handleToggleStep(st.step_order)}
                             >
-                              <div className="flex items-center gap-2">
-                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
-                                  isDone ? 'bg-white text-[#e17055] font-bold border-white' : 'border-white/50'
+                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] shrink-0 font-black ${
+                                  isDone ? 'bg-white text-[#e17055] font-black border-white' : 'border-white/60 text-white'
                                 }`}>
                                   {isDone ? '✓' : i + 1}
                                 </div>
-                                <span>{st.title}</span>
+                                <span className="text-xs sm:text-sm font-bold truncate">{st.title}</span>
                               </div>
-                              <span className="text-[10px] opacity-75">{isDone ? 'Done' : 'Pending'}</span>
+                              <span className={`text-[11px] font-black px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wide ${
+                                isDone ? 'bg-white text-[#e17055]' : 'bg-black/20 text-white/80'
+                              }`}>
+                                {isDone ? 'Done' : 'Pending'}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Complete Challenge Button */}
-                    <div className="mt-5 flex gap-2">
+                    {/* Challenge Action Buttons: Cancel, Add Extra Time & Complete */}
+                    <div className="flex flex-col sm:flex-row gap-2.5 pt-2 border-t border-white/20">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setIsCancelModalOpen(true)}
+                          className="flex-1 sm:flex-none py-2.5 sm:py-3 px-3.5 bg-black/25 hover:bg-black/35 text-white font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/25"
+                          id="btn-open-cancel-challenge-dashboard"
+                          title="Cancel this challenge"
+                        >
+                          <Trash2 className="w-4 h-4 text-white" />
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={() => setIsAddTimeModalOpen(true)}
+                          className="flex-1 sm:flex-none py-2.5 sm:py-3 px-3.5 bg-black/25 hover:bg-black/35 text-white font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/25"
+                          id="btn-open-add-time"
+                          title="Add more time to this challenge"
+                        >
+                          <Plus className="w-4 h-4 text-white" />
+                          Add Time
+                        </button>
+                      </div>
                       <button 
                         onClick={handleCompleteActiveChallenge}
-                        className="flex-1 py-3 px-4 bg-white text-[#e17055] font-extrabold rounded-xl text-xs shadow-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-1.5"
+                        className="flex-1 py-2.5 sm:py-3 px-4 bg-white text-[#e17055] font-black rounded-xl text-xs sm:text-sm shadow-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-101"
                         id="btn-mark-challenge-complete"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-[#00b894]" />
+                        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#00b894]" />
                         Mark as complete (+10 pts)
                       </button>
                     </div>
@@ -2115,6 +2421,27 @@ export default function App() {
         onClose={() => setIsDeadlineModalOpen(false)}
         onConfirm={handleStartSkill}
       />
+
+      {/* Add Extra Time Modal */}
+      {activeProgress && (
+        <AddTimeModal
+          isOpen={isAddTimeModalOpen}
+          onClose={() => setIsAddTimeModalOpen(false)}
+          onConfirm={handleAddExtraTime}
+          currentDeadline={activeProgress.deadline_at}
+          skillName={skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}
+        />
+      )}
+
+      {/* Cancel Challenge Confirmation Modal */}
+      {activeProgress && (
+        <CancelChallengeModal
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          onConfirm={handleCancelChallenge}
+          skillName={skills.find(s => s.id === activeProgress.skill_id)?.name || 'Skill'}
+        />
+      )}
 
       {/* Admin Skill Add/Edit Modal */}
       <SkillModal 

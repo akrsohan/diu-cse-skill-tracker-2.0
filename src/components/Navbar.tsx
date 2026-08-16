@@ -48,11 +48,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-[#161828] border-b border-white/10 shadow-lg shadow-black/20" id="app-navbar-header">
       {/* Top Navbar Row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-4 sm:gap-6">
         
         {/* Brand Logo & Title */}
         <div 
-          className="logo cursor-pointer hover:opacity-90 transition-all group flex items-center gap-3 select-none shrink-0" 
+          className="logo cursor-pointer hover:opacity-90 transition-all group flex items-center gap-3.5 select-none shrink-0" 
           onClick={() => {
             setCurrentPage('discover');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -62,21 +62,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Go to SkillTrack Home (Discover)"
           id="navbar-brand-logo"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6c5ce7] to-[#37f0ff] flex items-center justify-center text-white font-black text-base shadow-md shadow-[#6c5ce7]/30 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-[#6c5ce7] to-[#37f0ff] flex items-center justify-center text-white font-black text-lg shadow-md shadow-[#6c5ce7]/30 group-hover:scale-105 transition-transform">
             S
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-xl tracking-tight text-white leading-none">
+            <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-white leading-none">
               SkillTrack
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#37f0ff] mt-1">
+            <span className="text-[11px] uppercase font-bold tracking-widest text-[#37f0ff] mt-1.5">
               DIU Student Hub
             </span>
           </div>
         </div>
 
         {/* Main Desktop Navigation Links (Spacious, Single Line, Crisp Separation) */}
-        <div className="hidden md:flex items-center gap-2 bg-[#0e101a] p-1.5 rounded-2xl border border-white/10 shadow-inner" id="navbar-links">
+        <div className="hidden md:flex items-center gap-2.5 bg-[#0e101a] p-2 rounded-2xl border border-white/10 shadow-inner" id="navbar-links">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
@@ -84,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button 
                 key={item.id}
                 type="button"
-                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 select-none whitespace-nowrap cursor-pointer ${
+                className={`px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-extrabold transition-all flex items-center gap-2.5 select-none whitespace-nowrap cursor-pointer ${
                   isActive 
                     ? 'bg-[#6c5ce7] text-white shadow-md shadow-[#6c5ce7]/40 ring-1 ring-white/20' 
                     : 'text-[#9ca3af] hover:text-white hover:bg-white/5'
@@ -92,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setCurrentPage(item.id)}
                 id={`nav-link-${item.id}`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#8a8ca3]'}`} />
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'text-white' : 'text-[#8a8ca3]'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -101,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {currentUser.is_admin && (
             <button 
               type="button"
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 select-none whitespace-nowrap cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-extrabold transition-all flex items-center gap-2 select-none whitespace-nowrap cursor-pointer ${
                 currentPage === 'admin' 
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/40 ring-1 ring-purple-300/30' 
                   : 'text-purple-300 hover:text-white hover:bg-purple-500/15'
@@ -109,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setCurrentPage('admin')}
               id="nav-link-admin"
             >
-              <Shield className="w-4 h-4 text-purple-400" />
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
               <span>Admin</span>
             </button>
           )}
@@ -119,30 +119,30 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="relative shrink-0" ref={dropdownRef}>
           <button 
             type="button"
-            className="flex items-center gap-2.5 bg-[#0e101a] hover:bg-[#1f233a] border border-white/10 rounded-full pl-1.5 pr-3.5 py-1.5 transition-all shadow-md group focus:outline-none focus:ring-2 focus:ring-[#6c5ce7] cursor-pointer"
+            className="flex items-center gap-3 bg-[#0e101a] hover:bg-[#1f233a] border border-white/10 rounded-full pl-2 pr-4 py-2 transition-all shadow-md group focus:outline-none focus:ring-2 focus:ring-[#6c5ce7] cursor-pointer"
             onClick={() => setDropdownOpen(!dropdownOpen)}
             id="navbar-user-avatar-btn"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
             {/* Avatar Icon */}
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6c5ce7] via-[#8b5cff] to-[#37f0ff] text-white flex items-center justify-center font-bold text-sm shadow-inner ring-2 ring-white/10 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6c5ce7] via-[#8b5cff] to-[#37f0ff] text-white flex items-center justify-center font-bold text-sm shadow-inner ring-2 ring-white/10 group-hover:scale-105 transition-transform">
               {getInitials(currentUser.full_name)}
             </div>
             
             <div className="hidden sm:flex flex-col items-start text-left">
-              <span className="text-xs font-bold text-white leading-tight flex items-center gap-1">
+              <span className="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
                 {currentUser.full_name.split(' ')[0]}
                 {currentUser.profile_completed && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00b894]"></span>
+                  <span className="w-2 h-2 rounded-full bg-[#00b894]"></span>
                 )}
               </span>
-              <span className="text-[11px] text-[#37f0ff] font-semibold">
+              <span className="text-xs text-[#37f0ff] font-bold mt-0.5">
                 {currentUser.points} pts
               </span>
             </div>
 
-            <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {/* Spacious, Beautiful, Modern Dropdown Menu */}

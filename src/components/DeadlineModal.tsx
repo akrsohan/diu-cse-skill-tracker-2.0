@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Skill } from '../types';
-import { Clock, Check, X, Flame, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, Check, X, Calendar, Sparkles, Plus, Minus, Trophy, Flame } from 'lucide-react';
 
 interface DeadlineModalProps {
   skill: Skill;
@@ -15,17 +15,23 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
   onClose,
   onConfirm
 }) => {
-  const [days, setDays] = useState<number>(2);
-  const [hours, setHours] = useState<number>(0);
+  const [deadlineDays, setDeadlineDays] = useState<number>(0);
+  const [deadlineHours, setDeadlineHours] = useState<number>(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      setDeadlineDays(0);
+      setDeadlineHours(0);
+    }
+  }, [isOpen, skill.id]);
 
   if (!isOpen) return null;
 
-  const validDays = Math.max(0, isNaN(days) ? 0 : days);
-  const validHours = Math.max(0, isNaN(hours) ? 0 : hours);
+  const validDays = Math.max(0, isNaN(deadlineDays) ? 0 : deadlineDays);
+  const validHours = Math.max(0, isNaN(deadlineHours) ? 0 : deadlineHours);
   const totalHours = validDays * 24 + validHours;
   const isValidDuration = totalHours > 0;
 
-  // Compute calculated finish date preview
   const estimatedEndDate = new Date(Date.now() + totalHours * 60 * 60 * 1000);
   const formattedEndDate = estimatedEndDate.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -37,8 +43,8 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
   });
 
   const handleQuickPreset = (presetDays: number, presetHours: number) => {
-    setDays(presetDays);
-    setHours(presetHours);
+    setDeadlineDays(presetDays);
+    setDeadlineHours(presetHours);
   };
 
   const handleConfirm = () => {
@@ -46,166 +52,235 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
     onConfirm(validDays, validHours);
   };
 
+  const skillColor = skill.bg_color || '#6c5ce7';
+
+  // Colorful Presets with large, clear buttons
+  const presets = [
+    { label: '12 Hours', d: 0, h: 12, color: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-50 border-cyan-300 text-cyan-800 hover:bg-cyan-100' },
+    { label: '1 Day', d: 1, h: 0, color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100' },
+    { label: '2 Days', d: 2, h: 0, color: 'from-indigo-500 to-blue-600', bg: 'bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100' },
+    { label: '3 Days', d: 3, h: 0, color: 'from-purple-500 to-pink-500', bg: 'bg-purple-50 border-purple-300 text-purple-800 hover:bg-purple-100' },
+    { label: '5 Days', d: 5, h: 0, color: 'from-rose-500 to-amber-500', bg: 'bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100' },
+    { label: '7 Days', d: 7, h: 0, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' }
+  ];
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200" id="deadline-modal-backdrop">
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto p-4 sm:p-6 flex items-center justify-center animate-in fade-in duration-150 cursor-default" 
+      id="deadline-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div 
-        className="bg-white border border-[#e4e5ee] rounded-2xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white border-2 border-indigo-100 rounded-3xl p-6 sm:p-9 max-w-2xl w-full my-auto shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col gap-6"
         id="deadline-modal-container"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 text-[#8a8ca3] hover:text-[#1a1c2e] p-1.5 rounded-full hover:bg-[#f4f5f7] transition-colors cursor-pointer"
+          className="absolute top-5 right-5 sm:top-6 sm:right-6 text-gray-400 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-10"
           id="deadline-modal-close-btn"
-          title="Close modal"
+          title="Close dialog"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6" />
         </button>
 
-        {/* Skill Header */}
-        <div className="flex items-center gap-3 mb-4 pr-6">
+        {/* Header Section with Large Colorful Skill Badge */}
+        <div className="flex items-center gap-4 pt-2 pr-8">
           <div 
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-md shrink-0"
-            style={{ background: skill.bg_color || '#6c5ce7' }}
+            className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-lg shrink-0 ring-4 ring-purple-100"
+            style={{ background: skillColor }}
           >
             {skill.icon || skill.name.slice(0, 2)}
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-extrabold text-[#1a1c2e] leading-tight">{skill.name} Challenge</h3>
-            <p className="text-xs text-[#8a8ca3]">Set your custom deadline & commitment</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 inline-flex items-center gap-1.5 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Challenge Target
+              </span>
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 inline-flex items-center gap-1 shadow-xs">
+                <Trophy className="w-3.5 h-3.5 text-amber-500" /> +10 Points Reward
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#1a1c2e] leading-tight tracking-tight">
+              Set Your Deadline
+            </h2>
+            <p className="text-sm sm:text-base text-gray-500 font-medium mt-0.5">
+              Target for <b className="text-indigo-600 font-bold">{skill.name}</b>
+            </p>
           </div>
         </div>
 
-        {/* Recommended Timeline Note */}
-        <div className="bg-[#f9f9fc] border border-[#e4e5ee] rounded-2xl p-3.5 mb-5">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#6c5ce7] mb-1 uppercase tracking-wide">
-            <Flame className="w-4 h-4" /> Recommended Timeline
-          </div>
-          <p className="text-xs text-[#4a4c63] leading-relaxed">
-            Most DIU students complete this skill within <b>{skill.avg_days || '2-3 days'}</b>. 
-            Choose the pace that fits your schedule.
-          </p>
-        </div>
+        {/* Stepper Inputs for Days and Hours with High Contrast & Big Typography */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          
+          {/* Days Input Card (Indigo Theme) */}
+          <div className="bg-gradient-to-br from-indigo-50/90 via-indigo-50/50 to-purple-50/70 p-5 border-2 border-indigo-200 rounded-2xl flex flex-col justify-between shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-black uppercase tracking-wider text-indigo-800 bg-indigo-100 px-3 py-1 rounded-lg">
+                DAYS
+              </span>
+              <span className="text-xs font-bold text-indigo-600">24 hrs / day</span>
+            </div>
 
-        {/* Custom Deadline Inputs: Days & Hours */}
-        <div className="space-y-4 mb-5">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            
-            {/* Days input */}
-            <div className="bg-white p-3.5 border border-[#e4e5ee] rounded-2xl focus-within:border-[#6c5ce7] focus-within:ring-2 focus-within:ring-[#6c5ce7]/10 transition-all shadow-xs">
-              <label className="text-[11px] font-bold text-[#4a4c63] uppercase tracking-wider block mb-1.5" htmlFor="input-deadline-days">
-                Days
-              </label>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setDeadlineDays(Math.max(0, validDays - 1))}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border-2 border-indigo-200 text-indigo-700 font-black flex items-center justify-center hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 text-lg"
+                title="Decrease 1 day"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-baseline justify-center gap-1.5 flex-1 min-w-0 py-1">
                 <input 
                   id="input-deadline-days"
                   type="number"
                   min="0"
                   max="90"
-                  value={days === 0 && hours > 0 ? 0 : days || ''}
+                  value={deadlineDays === 0 ? '' : deadlineDays}
                   onChange={(e) => {
                     const val = parseInt(e.target.value, 10);
-                    setDays(isNaN(val) ? 0 : Math.max(0, val));
+                    setDeadlineDays(isNaN(val) ? 0 : Math.max(0, val));
                   }}
-                  className="w-full text-lg sm:text-xl font-extrabold text-[#1a1c2e] focus:outline-none bg-transparent"
+                  className="w-16 sm:w-20 text-center text-3xl sm:text-4xl font-black text-indigo-950 focus:outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="0"
+                  autoFocus
                 />
-                <span className="text-xs font-semibold text-[#8a8ca3]">days</span>
+                <span className="text-sm font-bold text-indigo-700 shrink-0">days</span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setDeadlineDays(validDays + 1)}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-indigo-600 text-white font-black flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200 cursor-pointer active:scale-95 shrink-0 text-lg"
+                title="Increase 1 day"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Hours Input Card (Rose/Amber Theme) */}
+          <div className="bg-gradient-to-br from-rose-50/90 via-rose-50/50 to-amber-50/70 p-5 border-2 border-rose-200 rounded-2xl flex flex-col justify-between shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-black uppercase tracking-wider text-rose-800 bg-rose-100 px-3 py-1 rounded-lg">
+                HOURS
+              </span>
+              <span className="text-xs font-bold text-rose-600">0 - 23 hrs</span>
             </div>
 
-            {/* Hours input */}
-            <div className="bg-white p-3.5 border border-[#e4e5ee] rounded-2xl focus-within:border-[#6c5ce7] focus-within:ring-2 focus-within:ring-[#6c5ce7]/10 transition-all shadow-xs">
-              <label className="text-[11px] font-bold text-[#4a4c63] uppercase tracking-wider block mb-1.5" htmlFor="input-deadline-hours">
-                Hours
-              </label>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setDeadlineHours(Math.max(0, validHours - 1))}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border-2 border-rose-200 text-rose-700 font-black flex items-center justify-center hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 text-lg"
+                title="Decrease 1 hour"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-baseline justify-center gap-1.5 flex-1 min-w-0 py-1">
                 <input 
                   id="input-deadline-hours"
                   type="number"
                   min="0"
                   max="23"
-                  value={hours === 0 && days > 0 ? 0 : hours || ''}
+                  value={deadlineHours === 0 ? '' : deadlineHours}
                   onChange={(e) => {
                     const val = parseInt(e.target.value, 10);
-                    setHours(isNaN(val) ? 0 : Math.max(0, Math.min(23, val)));
+                    setDeadlineHours(isNaN(val) ? 0 : Math.max(0, Math.min(23, val)));
                   }}
-                  className="w-full text-lg sm:text-xl font-extrabold text-[#1a1c2e] focus:outline-none bg-transparent"
+                  className="w-16 sm:w-20 text-center text-3xl sm:text-4xl font-black text-rose-950 focus:outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="0"
                 />
-                <span className="text-xs font-semibold text-[#8a8ca3]">hours</span>
+                <span className="text-sm font-bold text-rose-700 shrink-0">hours</span>
               </div>
-            </div>
 
+              <button
+                type="button"
+                onClick={() => setDeadlineHours(Math.min(23, validHours + 1))}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-rose-600 text-white font-black flex items-center justify-center hover:bg-rose-700 transition-all shadow-md shadow-rose-200 cursor-pointer active:scale-95 shrink-0 text-lg"
+                title="Increase 1 hour"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
-          {/* Quick presets for convenience */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#8a8ca3] mb-2 flex items-center justify-between">
-              <span>Quick Presets:</span>
-              <span className="text-[10px] text-[#6c5ce7]">Click to populate</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { label: '12 Hours', d: 0, h: 12 },
-                { label: '1 Day', d: 1, h: 0 },
-                { label: '2 Days', d: 2, h: 0 },
-                { label: '3 Days', d: 3, h: 0 },
-                { label: '5 Days', d: 5, h: 0 },
-                { label: '7 Days', d: 7, h: 0 }
-              ].map((p) => (
+        </div>
+
+        {/* Colorful Quick Presets */}
+        <div className="flex flex-col gap-2.5">
+          <div className="text-xs sm:text-sm font-bold text-gray-500 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-gray-800 font-extrabold">
+              <Flame className="w-4 h-4 text-amber-500" /> Quick Presets:
+            </span>
+            <span className="text-indigo-600 font-bold">Tap to auto-fill</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {presets.map((p) => {
+              const isSelected = validDays === p.d && validHours === p.h;
+              return (
                 <button
                   key={p.label}
                   type="button"
                   onClick={() => handleQuickPreset(p.d, p.h)}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                    validDays === p.d && validHours === p.h
-                      ? 'bg-[#6c5ce7] text-white border-[#6c5ce7] shadow-xs'
-                      : 'bg-[#f4f5f7] text-[#4a4c63] border-transparent hover:bg-[#e4e5ee]'
+                  className={`py-2.5 px-2 text-xs sm:text-sm font-black rounded-xl border-2 transition-all cursor-pointer text-center leading-tight ${
+                    isSelected
+                      ? `bg-gradient-to-r ${p.color} text-white border-transparent shadow-lg scale-103 ring-2 ring-indigo-400`
+                      : `${p.bg} shadow-xs`
                   }`}
                 >
                   {p.label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Calculated Deadline Summary */}
-        <div className={`rounded-2xl p-3.5 mb-5 transition-all ${
-          isValidDuration ? 'bg-[#f1eefe] border border-[#6c5ce7]/20 text-[#6c5ce7]' : 'bg-red-50 border border-red-200 text-red-600'
+        {/* Target Deadline Banner */}
+        <div className={`rounded-2xl p-4 sm:p-5 transition-all shadow-md ${
+          isValidDuration 
+            ? 'bg-gradient-to-br from-[#161828] via-[#242744] to-[#161828] text-white border-2 border-[#37f0ff]/50' 
+            : 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 text-amber-950'
         }`}>
           {isValidDuration ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4" /> Total Duration:
+            <div className="space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 text-sm sm:text-base font-bold">
+                <span className="flex items-center gap-2 text-[#37f0ff]">
+                  <Clock className="w-5 h-5" /> Total Duration:
                 </span>
-                <span className="text-xs sm:text-sm font-extrabold text-[#1a1c2e]">
+                <span className="text-lg sm:text-xl font-black text-amber-300">
                   {validDays > 0 ? `${validDays} Day${validDays > 1 ? 's' : ''} ` : ''}
                   {validHours > 0 ? `${validHours} Hour${validHours > 1 ? 's' : ''}` : ''}
-                  {' '}({totalHours}h total)
+                  {' '}({totalHours} hours total)
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-[#4a4c63] font-medium pt-1 border-t border-[#6c5ce7]/10">
-                <Calendar className="w-3.5 h-3.5 text-[#6c5ce7]" />
-                <span>Deadline target: <b>{formattedEndDate}</b></span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-white/90 font-medium pt-2 border-t border-white/20">
+                <Calendar className="w-4 h-4 text-[#37f0ff] shrink-0" />
+                <span>Target Completion: <b className="text-white font-extrabold">{formattedEndDate}</b></span>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>Please enter at least 1 hour or 1 day for your deadline.</span>
+            <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold text-amber-900">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+              <span>Please select preset or enter at least 1 hour or 1 day for your challenge.</span>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:flex-1 py-2.5 sm:py-3 px-4 bg-white border border-[#e4e5ee] rounded-xl font-bold text-xs text-[#4a4c63] hover:bg-[#f4f5f7] transition-colors cursor-pointer"
+            className="w-full sm:flex-1 py-3.5 sm:py-4 px-5 bg-white border-2 border-gray-200 rounded-2xl font-bold text-sm sm:text-base text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
             id="btn-cancel-deadline"
           >
             Cancel
@@ -214,15 +289,15 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
             type="button"
             disabled={!isValidDuration}
             onClick={handleConfirm}
-            className={`w-full sm:flex-[1.5] py-2.5 sm:py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+            className={`w-full sm:flex-[1.6] py-3.5 sm:py-4 px-6 rounded-2xl font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
               isValidDuration 
-                ? 'bg-gradient-to-r from-[#6c5ce7] to-[#806af5] text-white shadow-purple-200 hover:opacity-95' 
+                ? 'bg-gradient-to-r from-[#6c5ce7] via-[#806af5] to-[#ff7675] text-white shadow-indigo-300 hover:scale-102 hover:opacity-95' 
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
             }`}
             id="btn-confirm-deadline"
           >
-            <Check className="w-4 h-4" />
-            Confirm & Start
+            <Check className="w-5 h-5 text-white" />
+            Confirm &amp; Start Challenge
           </button>
         </div>
       </div>
