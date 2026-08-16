@@ -29,6 +29,7 @@ import {
   Trophy, 
   AlertCircle, 
   ArrowRight, 
+  ArrowLeft,
   ExternalLink, 
   Plus, 
   Shield, 
@@ -48,6 +49,8 @@ import {
 export default function App() {
   // Navigation
   const [currentPage, setCurrentPage] = useState<PageType>('discover');
+  const [discoverView, setDiscoverView] = useState<'main' | 'fields' | 'field-skills' | 'all-skills'>('main');
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
   // Auth Form State
@@ -528,17 +531,31 @@ export default function App() {
     return roadmapSteps[selectedSkillId] || [];
   }, [roadmapSteps, selectedSkillId]);
 
-  // Filtered skills for Discover
-  const filteredSkills = useMemo(() => {
-    return skills.filter(s => {
-      const matchField = fieldFilter ? s.field_id === fieldFilter : true;
-      const matchSearch = searchQuery 
-        ? s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-          s.description.toLowerCase().includes(searchQuery.toLowerCase())
-        : true;
-      return matchField && matchSearch;
-    });
-  }, [skills, fieldFilter, searchQuery]);
+  // Selected Field object
+  const selectedField = useMemo(() => {
+    return fields.find(f => f.id === selectedFieldId) || fields[0];
+  }, [fields, selectedFieldId]);
+
+  // Skills belonging to selected Field
+  const skillsInSelectedField = useMemo(() => {
+    if (!selectedFieldId) return [];
+    return skills.filter(s => s.field_id === selectedFieldId);
+  }, [skills, selectedFieldId]);
+
+  // All skills filtered by search query
+  const allSearchedSkills = useMemo(() => {
+    if (!searchQuery.trim()) return skills;
+    const q = searchQuery.toLowerCase().trim();
+    return skills.filter(s => 
+      s.name.toLowerCase().includes(q) || 
+      s.description.toLowerCase().includes(q)
+    );
+  }, [skills, searchQuery]);
+
+  // Popular skills for main Discover page (top learner count / curated picks)
+  const popularSkills = useMemo(() => {
+    return [...skills].sort((a, b) => (b.learner_count || 0) - (a.learner_count || 0)).slice(0, 8);
+  }, [skills]);
 
   // Leaderboard Sorted Profiles
   const filteredLeaderboardProfiles = useMemo(() => {
@@ -771,7 +788,12 @@ export default function App() {
       {currentPage !== 'login' && currentPage !== 'signup' && (
         <Navbar 
           currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
+          setCurrentPage={(page) => {
+            setCurrentPage(page);
+            if (page === 'discover') {
+              setDiscoverView('main');
+            }
+          }}
           currentUser={currentUser}
           onSignOut={() => {
             supabase.auth.signOut();
@@ -789,10 +811,10 @@ export default function App() {
         <div className="page" id="page-profile-setup">
           <div className="page-tag">PAGE 3 — PROFILE SETUP</div>
 
-          <div className="content" style={{ paddingTop: '40px' }}>
+          <div className="content pt-4 sm:pt-8 md:pt-10">
             
             {/* Segmented Progress Bar */}
-            <div className="setup-progress" style={{ maxWidth: '640px', margin: '0 auto 28px' }}>
+            <div className="setup-progress max-w-[640px] mx-auto mb-6">
               <div className="seg done"></div>
               <div className="seg done"></div>
               <div className="seg"></div>
@@ -967,154 +989,366 @@ export default function App() {
 
           <div className="content">
             
-            {/* Hero Banner */}
-            <div className="hero-banner">
-              <div>
-                <div style={{ fontSize: '13px', opacity: 0.85 }}>Welcome back</div>
-                <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>
-                  {currentUser.full_name.split(' ')[0]}, ready to level up?
-                </div>
-              </div>
-              <div className="hero-stats">
-                <div className="stat">
-                  <b>{currentUser.points}</b>
-                  <span>points</span>
-                </div>
-                <div className="stat">
-                  <b>{currentUser.current_streak}</b>
-                  <span>day streak</span>
-                </div>
-                <div className="stat">
-                  <b>#3</b>
-                  <span>in batch</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Incomplete profile warning reminder if skipped */}
-            {!currentUser.profile_completed && (
-              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
+            {/* ================================================================= */}
+            {/* DISCOVER VIEW: MAIN (EXPLORE OVERVIEW) */}
+            {/* ================================================================= */}
+            {discoverView === 'main' && (
+              <>
+                {/* Hero Banner */}
+                <div className="hero-banner">
                   <div>
-                    <div className="text-xs font-bold text-amber-900">Your profile is incomplete</div>
-                    <div className="text-[11px] text-amber-700">Complete setup to unlock starting challenges and earn leaderboard points.</div>
+                    <div style={{ fontSize: '13px', opacity: 0.85 }}>Welcome back</div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>
+                      {currentUser.full_name.split(' ')[0]}, ready to level up?
+                    </div>
+                  </div>
+                  <div className="hero-stats">
+                    <div className="stat">
+                      <b>{currentUser.points}</b>
+                      <span>points</span>
+                    </div>
+                    <div className="stat">
+                      <b>{currentUser.current_streak}</b>
+                      <span>day streak</span>
+                    </div>
+                    <div className="stat">
+                      <b>#3</b>
+                      <span>in batch</span>
+                    </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setCurrentPage('profile-setup')}
-                  className="px-3.5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors"
-                >
-                  Finish Setup →
-                </button>
+
+                {/* Incomplete profile warning reminder if skipped */}
+                {!currentUser.profile_completed && (
+                  <div className="mb-6 p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                      <div>
+                        <div className="text-xs font-bold text-amber-900">Your profile is incomplete</div>
+                        <div className="text-[11px] text-amber-700">Complete setup to unlock starting challenges and earn leaderboard points.</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setCurrentPage('profile-setup')}
+                      className="w-full sm:w-auto px-3.5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors whitespace-nowrap text-center cursor-pointer"
+                    >
+                      Finish Setup →
+                    </button>
+                  </div>
+                )}
+
+                {/* How do you want to explore? */}
+                <div className="section-title">How do you want to explore?</div>
+                <div className="choice-grid">
+                  
+                  {/* Choice 1: Browse by field */}
+                  <div 
+                    className="choice-card c1 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
+                    onClick={() => {
+                      setDiscoverView('fields');
+                    }}
+                    id="card-choice-field"
+                  >
+                    <div className="icon-badge">💼</div>
+                    <h3>Browse by field</h3>
+                    <p>Web Development, Cyber Security, Software Engineering and more</p>
+                  </div>
+
+                  {/* Choice 2: Browse by skill */}
+                  <div 
+                    className="choice-card c2 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
+                    onClick={() => {
+                      setDiscoverView('all-skills');
+                    }}
+                    id="card-choice-skill"
+                  >
+                    <div className="icon-badge">⚡</div>
+                    <h3>Browse by skill</h3>
+                    <p>Pick a single skill like HTML, C, or Python and start today</p>
+                  </div>
+                </div>
+
+                {/* Popular this week Section (Unchanged, no pill filters above) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-1">
+                  <div className="section-title mb-0">Popular this week</div>
+                  <span className="text-xs text-[#8a8ca3] font-medium">Click any skill to view roadmap</span>
+                </div>
+
+                <div className="skill-grid">
+                  {popularSkills.map((skill) => (
+                    <div 
+                      key={skill.id}
+                      className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
+                      onClick={() => {
+                        setSelectedSkillId(skill.id);
+                        setCurrentPage('roadmap');
+                      }}
+                      id={`skill-card-${skill.id}`}
+                    >
+                      <div>
+                        <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
+                          {skill.icon || skill.name.slice(0, 2)}
+                        </div>
+                        <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
+                        <p className="line-clamp-2 mb-2">{skill.description}</p>
+                      </div>
+                      <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
+                        <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
+                        <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ================================================================= */}
+            {/* DISCOVER VIEW: BROWSE BY FIELD — STEP 1 (ALL FIELDS GRID) */}
+            {/* ================================================================= */}
+            {discoverView === 'fields' && (
+              <div>
+                {/* Back to Discover link */}
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+                  <button 
+                    onClick={() => setDiscoverView('main')}
+                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
+                    id="btn-back-to-discover-from-fields"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                    Back to Discover
+                  </button>
+                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
+                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
+                    <span>/</span>
+                    <span className="font-bold text-[#1a1c2e]">Browse by Field</span>
+                  </div>
+                </div>
+
+                {/* View Header */}
+                <div className="mb-6">
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-[#1a1c2e] tracking-tight">Browse by Field</h2>
+                  <p className="text-xs sm:text-sm text-[#8a8ca3] mt-1">
+                    Select an engineering field to view all specialized learning tracks and roadmaps.
+                  </p>
+                </div>
+
+                {/* All Fields as Large Cards (Matching Popular Skill Cards Style) */}
+                <div className="skill-grid">
+                  {fields.map((field) => {
+                    const fieldSkills = skills.filter(s => s.field_id === field.id);
+                    return (
+                      <div 
+                        key={field.id}
+                        className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
+                        onClick={() => {
+                          setSelectedFieldId(field.id);
+                          setDiscoverView('field-skills');
+                        }}
+                        id={`field-card-${field.id}`}
+                      >
+                        <div>
+                          <div className="icon shadow-sm" style={{ background: field.color || '#6c5ce7' }}>
+                            {field.icon}
+                          </div>
+                          <h4 className="group-hover:text-[#6c5ce7] transition-colors flex items-center justify-between">
+                            <span>{field.name}</span>
+                            <ChevronRight className="w-3.5 h-3.5 text-[#8a8ca3] group-hover:text-[#6c5ce7] group-hover:translate-x-0.5 transition-all opacity-0 group-hover:opacity-100" />
+                          </h4>
+                          <p className="line-clamp-2 mb-3">{field.description}</p>
+                        </div>
+                        <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
+                          <span className="text-[#6c5ce7] font-bold bg-[#f1eefe] px-2 py-0.5 rounded-full">
+                            {fieldSkills.length} {fieldSkills.length === 1 ? 'skill' : 'skills'}
+                          </span>
+                          <span className="group-hover:text-[#1a1c2e] transition-colors">Explore track →</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* How do you want to explore? */}
-            <div className="section-title">How do you want to explore?</div>
-            <div className="choice-grid">
-              
-              {/* Choice 1: Browse by field */}
-              <div 
-                className="choice-card c1 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
-                onClick={() => {
-                  setFieldFilter(fields[0].id);
-                  showToast('Showing skills under Web Development');
-                }}
-                id="card-choice-field"
-              >
-                <div className="icon-badge">💼</div>
-                <h3>Browse by field</h3>
-                <p>Web Development, Cyber Security, Software Engineering and more</p>
-              </div>
-
-              {/* Choice 2: Browse by skill */}
-              <div 
-                className="choice-card c2 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
-                onClick={() => {
-                  setFieldFilter(null);
-                  showToast('Showing all available skill roadmaps');
-                }}
-                id="card-choice-skill"
-              >
-                <div className="icon-badge">⚡</div>
-                <h3>Browse by skill</h3>
-                <p>Pick a single skill like HTML, C, or Python and start today</p>
-              </div>
-            </div>
-
-            {/* Field Filter Tabs */}
-            <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
-              <button
-                onClick={() => setFieldFilter(null)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  fieldFilter === null 
-                    ? 'bg-[#1a1c2e] text-white shadow-md' 
-                    : 'bg-white text-[#8a8ca3] border border-[#e4e5ee] hover:bg-[#f4f5f7]'
-                }`}
-              >
-                All Skills ({skills.length})
-              </button>
-              {fields.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFieldFilter(f.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                    fieldFilter === f.id 
-                      ? 'bg-[#6c5ce7] text-white shadow-md' 
-                      : 'bg-white text-[#8a8ca3] border border-[#e4e5ee] hover:bg-[#f4f5f7]'
-                  }`}
-                >
-                  {f.icon} {f.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Popular this week Grid */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="section-title mb-0">Popular this week</div>
-              <span className="text-xs text-[#8a8ca3] font-medium">Click any skill to view roadmap</span>
-            </div>
-
-            <div className="skill-grid">
-              {filteredSkills.slice(0, 4).map((skill) => (
-                <div 
-                  key={skill.id}
-                  className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30"
-                  onClick={() => {
-                    setSelectedSkillId(skill.id);
-                    setCurrentPage('roadmap');
-                  }}
-                  id={`skill-card-${skill.id}`}
-                >
-                  <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
-                    {skill.icon || skill.name.slice(0, 2)}
-                  </div>
-                  <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
-                  <p>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps · {skill.learner_count || 24} learners</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Secondary skill cards if more exist */}
-            {filteredSkills.length > 4 && (
-              <div className="skill-grid mt-4">
-                {filteredSkills.slice(4, 8).map((skill) => (
-                  <div 
-                    key={skill.id}
-                    className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30"
-                    onClick={() => {
-                      setSelectedSkillId(skill.id);
-                      setCurrentPage('roadmap');
-                    }}
+            {/* ================================================================= */}
+            {/* DISCOVER VIEW: BROWSE BY FIELD — STEP 2 (SKILLS WITHIN SELECTED FIELD) */}
+            {/* ================================================================= */}
+            {discoverView === 'field-skills' && (
+              <div>
+                {/* Back to fields Breadcrumb & Button */}
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+                  <button 
+                    onClick={() => setDiscoverView('fields')}
+                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
+                    id="btn-back-to-fields"
                   >
-                    <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
-                      {skill.icon || skill.name.slice(0, 2)}
-                    </div>
-                    <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
-                    <p>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps · {skill.learner_count || 20} learners</p>
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                    Back to fields
+                  </button>
+                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
+                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
+                    <span>/</span>
+                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('fields')}>Fields</span>
+                    <span>/</span>
+                    <span className="font-bold text-[#1a1c2e]">{selectedField?.name}</span>
                   </div>
-                ))}
+                </div>
+
+                {/* Field Overview Banner */}
+                <div className="hero-banner mb-6" style={{ background: selectedField?.color ? `linear-gradient(120deg, ${selectedField.color}, #a29bfe)` : undefined }}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                      {selectedField?.icon}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, fontWeight: 700 }}>Domain Track</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '2px' }}>{selectedField?.name}</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9, marginTop: '2px' }}>{selectedField?.description}</div>
+                    </div>
+                  </div>
+                  <div className="hero-stats">
+                    <div className="stat">
+                      <b>{skillsInSelectedField.length}</b>
+                      <span>roadmaps</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section title */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-1">
+                  <div className="section-title mb-0">Skills in {selectedField?.name}</div>
+                  <span className="text-xs text-[#8a8ca3] font-medium">Click any skill to view roadmap</span>
+                </div>
+
+                {/* Large Card Grid of Skills in this Field */}
+                {skillsInSelectedField.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-8 text-center border border-[#e4e5ee] shadow-sm">
+                    <div className="text-3xl mb-2">📚</div>
+                    <div className="font-bold text-sm text-[#1a1c2e]">No roadmaps yet in this field</div>
+                    <div className="text-xs text-[#8a8ca3] mt-1">Admin will publish new skill tracks soon.</div>
+                  </div>
+                ) : (
+                  <div className="skill-grid">
+                    {skillsInSelectedField.map((skill) => (
+                      <div 
+                        key={skill.id}
+                        className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
+                        onClick={() => {
+                          setSelectedSkillId(skill.id);
+                          setCurrentPage('roadmap');
+                        }}
+                        id={`skill-card-field-${skill.id}`}
+                      >
+                        <div>
+                          <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
+                            {skill.icon || skill.name.slice(0, 2)}
+                          </div>
+                          <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
+                          <p className="line-clamp-2 mb-2">{skill.description}</p>
+                        </div>
+                        <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
+                          <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
+                          <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ================================================================= */}
+            {/* DISCOVER VIEW: BROWSE BY SKILL (ALL INDIVIDUAL SKILLS GRID) */}
+            {/* ================================================================= */}
+            {discoverView === 'all-skills' && (
+              <div>
+                {/* Back to Discover Breadcrumb & Button */}
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+                  <button 
+                    onClick={() => setDiscoverView('main')}
+                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
+                    id="btn-back-to-discover-from-skills"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                    Back to Discover
+                  </button>
+                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
+                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
+                    <span>/</span>
+                    <span className="font-bold text-[#1a1c2e]">Browse by Skill</span>
+                  </div>
+                </div>
+
+                {/* View Header & Real-time Search */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#1a1c2e] tracking-tight">Browse by Skill</h2>
+                    <p className="text-xs sm:text-sm text-[#8a8ca3] mt-0.5">
+                      Explore all {skills.length} individual skills across all fields. Select any skill to view its roadmap.
+                    </p>
+                  </div>
+                  {/* Search Bar */}
+                  <div className="relative min-w-[240px] max-w-sm w-full sm:w-auto">
+                    <Search className="w-4 h-4 text-[#8a8ca3] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search skills (e.g. React, C, Python)..."
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-[#e4e5ee] rounded-xl text-xs text-[#1a1c2e] focus:outline-none focus:border-[#6c5ce7] shadow-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* All Individual Skills Grid */}
+                {allSearchedSkills.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-8 text-center border border-[#e4e5ee] shadow-sm">
+                    <div className="text-3xl mb-2">🔍</div>
+                    <div className="font-bold text-sm text-[#1a1c2e]">No skills match "{searchQuery}"</div>
+                    <div className="text-xs text-[#8a8ca3] mt-1">Try searching for something else or clear the search.</div>
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="mt-3 px-4 py-1.5 bg-[#6c5ce7] text-white rounded-lg text-xs font-bold hover:bg-[#5b4cc4] transition-colors cursor-pointer"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                ) : (
+                  <div className="skill-grid">
+                    {allSearchedSkills.map((skill) => {
+                      const fieldOfSkill = fields.find(f => f.id === skill.field_id);
+                      return (
+                        <div 
+                          key={skill.id}
+                          className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
+                          onClick={() => {
+                            setSelectedSkillId(skill.id);
+                            setCurrentPage('roadmap');
+                          }}
+                          id={`skill-card-all-${skill.id}`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
+                                {skill.icon || skill.name.slice(0, 2)}
+                              </div>
+                              {fieldOfSkill && (
+                                <span className="text-[10px] font-bold text-[#6c5ce7] bg-[#f1eefe] px-2 py-0.5 rounded-full truncate max-w-[120px]">
+                                  {fieldOfSkill.name}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
+                            <p className="line-clamp-2 mb-2">{skill.description}</p>
+                          </div>
+                          <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
+                            <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
+                            <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1134,9 +1368,15 @@ export default function App() {
             {/* Back button */}
             <button 
               onClick={() => setCurrentPage('discover')}
-              className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1 transition-colors"
+              className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1.5 transition-colors cursor-pointer group"
+              id="btn-roadmap-back"
             >
-              ← Back to Discover
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              {discoverView === 'field-skills' && selectedField 
+                ? `Back to ${selectedField.name} Roadmaps` 
+                : discoverView === 'all-skills'
+                ? 'Back to All Skills'
+                : 'Back to Discover'}
             </button>
 
             {/* Roadmap Header */}
@@ -1803,12 +2043,12 @@ export default function App() {
 
             {/* TAB 3: ROADMAP STEPS */}
             {adminTab === 'steps' && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <label className="text-xs font-bold text-[#4a4c63]">Select Skill Track:</label>
                     <select 
-                      className="field-input py-1.5 text-xs mb-0 w-auto"
+                      className="field-input py-2 px-3 text-xs mb-0 w-full sm:w-auto"
                       value={selectedSkillId}
                       onChange={(e) => setSelectedSkillId(e.target.value)}
                     >
@@ -1820,7 +2060,7 @@ export default function App() {
 
                   <button
                     onClick={() => setIsStepModalOpen(true)}
-                    className="px-3 py-1.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-lg hover:opacity-90 flex items-center gap-1"
+                    className="w-full sm:w-auto px-3.5 py-2 bg-[#6c5ce7] text-white text-xs font-bold rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add Step to {currentSkill.name}
@@ -1829,19 +2069,19 @@ export default function App() {
 
                 <div className="space-y-3">
                   {currentSkillSteps.map((st, idx) => (
-                    <div key={st.id} className="p-3.5 border border-[#e4e5ee] rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-[#6c5ce7] text-white font-bold text-xs flex items-center justify-center">
+                    <div key={st.id} className="p-3 sm:p-3.5 border border-[#e4e5ee] rounded-xl flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-[#6c5ce7] text-white font-bold text-xs flex items-center justify-center shrink-0">
                           {idx + 1}
                         </div>
-                        <div>
-                          <div className="font-bold text-xs text-[#1a1c2e]">{st.title}</div>
-                          <div className="text-[11px] text-[#8a8ca3]">{st.description}</div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-[#1a1c2e] truncate">{st.title}</div>
+                          <div className="text-[11px] text-[#8a8ca3] line-clamp-2">{st.description}</div>
                         </div>
                       </div>
                       <button 
                         onClick={() => handleDeleteStep(currentSkill.id, st.id)}
-                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg text-xs"
+                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg text-xs shrink-0"
                         title="Delete Step"
                       >
                         <Trash2 className="w-4 h-4" />

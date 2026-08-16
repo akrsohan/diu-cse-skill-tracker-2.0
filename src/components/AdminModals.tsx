@@ -47,16 +47,16 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 text-[#8a8ca3] hover:text-[#1a1c2e]"
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 text-[#8a8ca3] hover:text-[#1a1c2e] p-1 rounded-full hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-[#1a1c2e] mb-6">
+        <h3 className="text-lg sm:text-xl font-extrabold text-[#1a1c2e] mb-4 sm:mb-6 pr-8">
           {initialData ? 'Edit Skill Track' : 'Add New Skill Track'}
         </h3>
 
@@ -193,16 +193,16 @@ export const StepModal: React.FC<StepModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 text-[#8a8ca3] hover:text-[#1a1c2e]"
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 text-[#8a8ca3] hover:text-[#1a1c2e] p-1 rounded-full hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-[#1a1c2e] mb-1">
+        <h3 className="text-lg sm:text-xl font-extrabold text-[#1a1c2e] mb-1 pr-8">
           Add Roadmap Step
         </h3>
         <p className="text-xs text-[#8a8ca3] mb-6">For {skillName} (Step #{nextOrder})</p>

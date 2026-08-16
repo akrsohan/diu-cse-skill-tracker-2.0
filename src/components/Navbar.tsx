@@ -148,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Spacious, Beautiful, Modern Dropdown Menu */}
           {dropdownOpen && (
             <div 
-              className="absolute right-0 mt-3 w-80 bg-[#161828] border border-[#2b2f4c] rounded-2xl shadow-2xl p-3.5 z-50 text-slate-200 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
+              className="absolute right-0 mt-3 w-[calc(100vw-32px)] max-w-[320px] sm:w-80 bg-[#161828] border border-[#2b2f4c] rounded-2xl shadow-2xl p-3 sm:p-3.5 z-50 text-slate-200 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
               id="navbar-user-dropdown"
             >
               {/* User Profile Header Card */}
