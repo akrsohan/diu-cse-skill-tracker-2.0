@@ -881,13 +881,7 @@ export const initialProfiles: Profile[] = [
 ];
 
 export const initialCompletedSkills: Record<string, { skillName: string; icon: string; bg: string; duration: string; completedAt: string }[]> = {
-  'user-sohan': [
-    { skillName: 'HTML', icon: 'H', bg: '#e84393', duration: 'Finished in 1 day 10 hours', completedAt: '1 day ago' },
-    { skillName: 'CSS', icon: 'CS', bg: '#e17055', duration: 'Finished in 2 days 2 hours', completedAt: '3 days ago' },
-    { skillName: 'JavaScript', icon: 'JS', bg: '#00b894', duration: 'Finished in 3 days 12 hours', completedAt: '6 days ago' },
-    { skillName: 'React', icon: 'RE', bg: '#6c5ce7', duration: 'Finished in 4 days 6 hours', completedAt: '10 days ago' },
-    { skillName: 'Git & GitHub', icon: 'GT', bg: '#2d3436', duration: 'Finished in 1 day 4 hours', completedAt: '14 days ago' }
-  ],
+  'user-sohan': [],
   'user-rafi': [
     { skillName: 'HTML', icon: 'H', bg: '#e84393', duration: 'Finished in 1 day 14 hours', completedAt: '2 days ago' },
     { skillName: 'C Programming', icon: 'C', bg: '#0984e3', duration: 'Finished in 2 days 3 hours', completedAt: '5 days ago' },

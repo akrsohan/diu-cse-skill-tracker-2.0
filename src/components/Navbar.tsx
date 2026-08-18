@@ -5,7 +5,8 @@ import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, C
 
 interface NavbarProps {
   currentPage: PageType;
-  setCurrentPage: (page: PageType) => void;
+  setCurrentPage?: (page: PageType) => void;
+  onNavigate?: (page: PageType) => void;
   currentUser: Profile;
   onSignOut: () => void;
   onSelectUserForProfile?: (userId: string) => void;
@@ -14,12 +15,21 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentPage,
   setCurrentPage,
+  onNavigate,
   currentUser,
   onSignOut,
   onSelectUserForProfile
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleNav = (page: PageType) => {
+    if (onNavigate) {
+      onNavigate(page);
+    } else if (setCurrentPage) {
+      setCurrentPage(page);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -55,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div 
           className="logo cursor-pointer hover:opacity-90 transition-all group flex items-center gap-3.5 select-none shrink-0" 
           onClick={() => {
-            setCurrentPage('discover');
+            handleNav('discover');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           role="button"
@@ -90,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'bg-[#6c5ce7] text-white shadow-md shadow-[#6c5ce7]/40 ring-1 ring-white/20' 
                     : 'text-[#9ca3af] hover:text-white hover:bg-white/5'
                 }`}
-                onClick={() => setCurrentPage(item.id)}
+                onClick={() => handleNav(item.id)}
                 id={`nav-link-${item.id}`}
               >
                 <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'text-white' : 'text-[#8a8ca3]'}`} />
@@ -107,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/40 ring-1 ring-purple-300/30' 
                   : 'text-purple-300 hover:text-white hover:bg-purple-500/15'
               }`}
-              onClick={() => setCurrentPage('admin')}
+              onClick={() => handleNav('admin')}
               id="nav-link-admin"
             >
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
@@ -188,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
-                    setCurrentPage('dashboard');
+                    handleNav('dashboard');
                     setDropdownOpen(false);
                   }}
                   id="dropdown-dashboard"
@@ -206,7 +216,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
-                    setCurrentPage('leaderboard');
+                    handleNav('leaderboard');
                     setDropdownOpen(false);
                   }}
                   id="dropdown-leaderboard"
@@ -225,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     type="button"
                     className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                     onClick={() => {
-                      setCurrentPage('admin');
+                      handleNav('admin');
                       setDropdownOpen(false);
                     }}
                     id="dropdown-admin-portal"
@@ -245,7 +255,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
                     if (onSelectUserForProfile) onSelectUserForProfile(currentUser.id);
-                    setCurrentPage('profile');
+                    handleNav('profile');
                     setDropdownOpen(false);
                   }}
                   id="dropdown-my-profile"
@@ -263,7 +273,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
-                    setCurrentPage('profile-setup');
+                    handleNav('profile-setup');
                     setDropdownOpen(false);
                   }}
                   id="dropdown-edit-profile"
@@ -317,7 +327,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-[#6c5ce7] text-white shadow-md shadow-[#6c5ce7]/40 ring-1 ring-white/20' 
                   : 'text-[#9ca3af] hover:text-white hover:bg-white/5'
               }`}
-              onClick={() => setCurrentPage(item.id)}
+              onClick={() => handleNav(item.id)}
               id={`mobile-nav-${item.id}`}
             >
               <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#8a8ca3]'}`} />
@@ -334,7 +344,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/40 ring-1 ring-purple-300/30' 
                 : 'text-purple-300 hover:text-white hover:bg-purple-500/15'
             }`}
-            onClick={() => setCurrentPage('admin')}
+            onClick={() => handleNav('admin')}
             id="mobile-nav-admin"
           >
             <Shield className="w-3.5 h-3.5 text-purple-400" />

@@ -15,16 +15,29 @@ import {
   initialSkills, 
   initialRoadmapSteps, 
   initialBadges, 
-  initialProfiles, 
-  initialCompletedSkills, 
-  initialActiveProgress 
+  initialProfiles
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
+import { getMainName } from './lib/nameHelper';
 import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, StepModal } from './components/AdminModals';
-import { getMainName } from './lib/nameHelper';
+import { 
+  getProfile,
+  updateProfile,
+  ensureProfile,
+  getAllProfiles,
+  getActiveProgress,
+  startSkillChallenge,
+  addExtraTimeToProgress,
+  cancelProgress,
+  completeChallenge,
+  getUserCompletedProgress,
+  getAllCompletedProgress,
+  getUserBadges,
+  getAdminStats
+} from './lib/supabaseService';
 import { 
   CheckCircle2, 
   Clock, 
@@ -37,16 +50,23 @@ import {
   Plus, 
   Shield, 
   Trash2, 
-  Edit, 
-  Sparkles, 
   ChevronRight, 
   BookOpen, 
   Upload, 
-  UserCheck, 
-  Check, 
-  Lock,
   Search,
-  Filter
+  Filter,
+  Zap,
+  Sparkles,
+  User,
+  GraduationCap,
+  Building2,
+  Hash,
+  MessageSquare,
+  Phone,
+  Camera,
+  Save,
+  Check,
+  Share2
 } from 'lucide-react';
 
 export default function App() {
@@ -56,55 +76,41 @@ export default function App() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
-  // Auth Form State
-  const [authEmail, setAuthEmail] = useState(ADMIN_EMAIL);
-  const [authPassword, setAuthPassword] = useState('password123');
-  const [authName, setAuthName] = useState('Md. Sohan Ali');
+  // Auth Form State (Clean by default)
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // App Data State
+  // App Data State (Fields and skills remain seeded as requested)
   const [fields, setFields] = useState<Field[]>(initialFields);
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [roadmapSteps, setRoadmapSteps] = useState<Record<string, RoadmapStep[]>>(initialRoadmapSteps);
-  const [badges, setBadges] = useState<Badge[]>(initialBadges);
+  const [badges] = useState<Badge[]>(initialBadges);
+  
+  // Live Profiles & Progress State from Supabase
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
-  const [completedSkillsMap, setCompletedSkillsMap] = useState(initialCompletedSkills);
+  const [userBadgeIds, setUserBadgeIds] = useState<string[]>([]);
+  const [allCompletedProgress, setAllCompletedProgress] = useState<UserProgress[]>([]);
+  const [selectedUserCompletedProgress, setSelectedUserCompletedProgress] = useState<UserProgress[]>([]);
   
   // Selected Profile for Public Profile view
-  const [selectedUserId, setSelectedUserId] = useState<string>('user-sohan');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  // Logged-in User Profile (mdsohanali636@gmail.com is Admin)
-  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]); // Md. Sohan Ali
+  // Logged-in User Profile
+  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]);
 
-  // Active Challenge (User Progress) - Persisted in localStorage so deletions/cancellations persist across page refreshes
-  const [activeProgress, setActiveProgress] = useState<UserProgress | null>(() => {
-    try {
-      const saved = localStorage.getItem('skill_active_progress');
-      if (saved === 'null' || saved === 'cancelled' || saved === 'deleted') {
-        return null;
-      }
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Error loading active progress from localStorage:', e);
-    }
-    return null;
+  // Active Challenge (User Progress)
+  const [activeProgress, setActiveProgress] = useState<UserProgress | null>(null);
+
+  // Admin Aggregate Stats
+  const [adminStats, setAdminStats] = useState({
+    totalUsers: 1,
+    activeChallenges: 0,
+    mostPopularSkillName: 'HTML',
+    totalCompletions: 0
   });
-
-  // Keep active progress synced to localStorage
-  useEffect(() => {
-    try {
-      if (activeProgress && activeProgress.status === 'in_progress') {
-        localStorage.setItem('skill_active_progress', JSON.stringify(activeProgress));
-      } else {
-        localStorage.setItem('skill_active_progress', 'null');
-      }
-    } catch (e) {
-      console.error('Error saving active progress to localStorage:', e);
-    }
-  }, [activeProgress]);
 
   // Selected Skill for Roadmap view
   const [selectedSkillId, setSelectedSkillId] = useState<string>('skill-html');
@@ -119,6 +125,7 @@ export default function App() {
 
   // Filter state for Discover
   const [fieldFilter, setFieldFilter] = useState<string | null>(null);
+  const [skillFilter, setSkillFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Leaderboard Batch Filter
@@ -128,27 +135,28 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<'users' | 'skills' | 'steps'>('users');
 
   // Profile Setup Form State
-  const [setupFullName, setSetupFullName] = useState(currentUser.full_name);
-  const [setupDepartment, setSetupDepartment] = useState(currentUser.department);
-  const [setupRoll, setSetupRoll] = useState(currentUser.roll_number);
-  const [setupBatch, setSetupBatch] = useState(currentUser.batch_number);
-  const [setupFb, setSetupFb] = useState(currentUser.fb_link || 'facebook.com/mdsohanali');
-  const [setupTelegram, setSetupTelegram] = useState(currentUser.telegram_link || 't.me/sohanali');
-  const [setupWhatsapp, setSetupWhatsapp] = useState(currentUser.whatsapp_link || '+8801700000001');
+  const [setupFullName, setSetupFullName] = useState('');
+  const [setupDepartment, setSetupDepartment] = useState('');
+  const [setupRoll, setSetupRoll] = useState('');
+  const [setupBatch, setSetupBatch] = useState('');
+  const [setupFb, setSetupFb] = useState('');
+  const [setupTelegram, setSetupTelegram] = useState('');
+  const [setupWhatsapp, setSetupWhatsapp] = useState('');
   const [setupAvatarPreview, setSetupAvatarPreview] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [setupLoading, setSetupLoading] = useState(false);
 
   // Real-time Countdown Timer calculation
   const [timeRemaining, setTimeRemaining] = useState<{ days: number; hours: number; minutes: number; seconds: number; isExpired: boolean; percent: number }>({
-    days: 1,
-    hours: 4,
-    minutes: 12,
+    days: 0,
+    hours: 0,
+    minutes: 0,
     seconds: 0,
     isExpired: false,
-    percent: 45
+    percent: 0
   });
 
-  // Success Notification Banner
+  // Success Notification Toast Banner
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -156,20 +164,85 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Sync Supabase Auth Session on mount
+  /**
+   * Master Data Loader: Fetches all live Supabase records
+   */
+  const refreshAppData = async (targetUid?: string) => {
+    const uid = targetUid || currentUser?.id;
+
+    try {
+      // 1. Fetch all profiles
+      const liveProfiles = await getAllProfiles();
+      if (liveProfiles.length > 0) {
+        setProfiles(liveProfiles);
+      }
+
+      // 2. Fetch all completed challenges across all users
+      const liveCompleted = await getAllCompletedProgress();
+      setAllCompletedProgress(liveCompleted);
+
+      // 3. Fetch Admin stats
+      const liveStats = await getAdminStats();
+      setAdminStats(liveStats);
+
+      // 4. Fetch specific user data if logged in
+      if (uid) {
+        const userProf = await getProfile(uid);
+        if (userProf) {
+          setCurrentUser(userProf);
+        }
+
+        const active = await getActiveProgress(uid);
+        setActiveProgress(active);
+
+        const badgesList = await getUserBadges(uid);
+        setUserBadgeIds(badgesList);
+      }
+    } catch (err) {
+      console.error('Error refreshing app data:', err);
+    }
+  };
+
+  // Sync Supabase Auth Session on mount and listen to changes
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      refreshAppData();
+      return;
+    }
 
     // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        let profile = await getProfile(session.user.id);
+        if (!profile) {
+          profile = await ensureProfile({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name
+          });
+        }
+        setCurrentUser(profile);
+        await refreshAppData(session.user.id);
+      } else {
+        await refreshAppData();
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        let profile = await getProfile(session.user.id);
+        if (!profile) {
+          profile = await ensureProfile({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name
+          });
+        }
+        setCurrentUser(profile);
+        await refreshAppData(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setActiveProgress(null);
+        setUserBadgeIds([]);
       }
     });
 
@@ -178,46 +251,34 @@ export default function App() {
     };
   }, []);
 
-  const fetchUserProfile = async (userId: string, overrideEmail?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      const emailToCheck = (overrideEmail || data?.email || currentUser.email || '').toLowerCase().trim();
-      const isUserAdmin = emailToCheck === ADMIN_EMAIL.toLowerCase();
-
-      if (data && !error) {
-        setCurrentUser(prev => ({
-          ...prev,
-          id: data.id,
-          email: emailToCheck || prev.email,
-          full_name: data.full_name || prev.full_name,
-          department: data.department || prev.department,
-          roll_number: data.roll_number || prev.roll_number,
-          batch_number: data.batch_number || prev.batch_number,
-          fb_link: data.fb_link || prev.fb_link,
-          telegram_link: data.telegram_link || prev.telegram_link,
-          whatsapp_link: data.whatsapp_link || prev.whatsapp_link,
-          profile_completed: data.profile_completed ?? prev.profile_completed,
-          points: data.points ?? prev.points,
-          current_streak: data.current_streak ?? prev.current_streak,
-          is_admin: isUserAdmin,
-          is_banned: data.is_banned ?? prev.is_banned
-        }));
-      }
-    } catch {
-      // Fallback to offline mock profile
+  // When currentUser changes, sync the Profile Setup form state
+  useEffect(() => {
+    if (currentUser) {
+      setSetupFullName(currentUser.full_name || '');
+      setSetupDepartment(currentUser.department || '');
+      setSetupRoll(currentUser.roll_number || '');
+      setSetupBatch(currentUser.batch_number || '');
+      setSetupFb(currentUser.fb_link || '');
+      setSetupTelegram(currentUser.telegram_link || '');
+      setSetupWhatsapp(currentUser.whatsapp_link || '');
+      setSetupAvatarPreview(currentUser.avatar_url || null);
     }
-  };
+  }, [currentUser]);
 
-  // Live Timer Tick (Updates every second)
+  // When selectedUserId changes or Public Profile page is opened, fetch target user's completed skills
+  useEffect(() => {
+    if (currentPage === 'profile' && selectedUserId) {
+      getUserCompletedProgress(selectedUserId).then(completedRows => {
+        setSelectedUserCompletedProgress(completedRows);
+      });
+    }
+  }, [currentPage, selectedUserId]);
+
+  // Live Timer Tick (Updates every second based on real dates)
   useEffect(() => {
     if (!activeProgress || activeProgress.status !== 'in_progress') return;
 
-    const interval = setInterval(() => {
+    const calculateTime = () => {
       const start = new Date(activeProgress.started_at).getTime();
       const deadline = new Date(activeProgress.deadline_at).getTime();
       const now = Date.now();
@@ -240,7 +301,7 @@ export default function App() {
         const hours = Math.floor((remainingMs / (1000 * 60 * 60)) % 24);
         const minutes = Math.floor((remainingMs / 1000 / 60) % 60);
         const seconds = Math.floor((remainingMs / 1000) % 60);
-        const percent = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
+        const percent = totalDuration > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100))) : 0;
 
         setTimeRemaining({
           days,
@@ -251,18 +312,73 @@ export default function App() {
           percent
         });
       }
-    }, 1000);
+    };
 
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
   }, [activeProgress]);
 
-  // Auth Handler: Login / Signup with Supabase
+  // Live Batch Rank calculation for current user
+  const userBatchRank = useMemo(() => {
+    if (!currentUser || !currentUser.id) return '—';
+    const batchList = profiles
+      .filter(p => !currentUser.batch_number || p.batch_number === currentUser.batch_number)
+      .sort((a, b) => (b.points || 0) - (a.points || 0));
+    const idx = batchList.findIndex(p => p.id === currentUser.id);
+    if (idx === -1) return '—';
+    return `#${idx + 1}`;
+  }, [profiles, currentUser]);
+
+  // Derived current skill and steps
+  const currentSkill = useMemo(() => {
+    return skills.find(s => s.id === selectedSkillId) || skills[0];
+  }, [skills, selectedSkillId]);
+
+  const currentSkillSteps = useMemo(() => {
+    return roadmapSteps[selectedSkillId] || [];
+  }, [roadmapSteps, selectedSkillId]);
+
+  // Target profile for Public Profile view
+  const targetProfile = useMemo(() => {
+    return profiles.find(p => p.id === selectedUserId) || currentUser;
+  }, [profiles, selectedUserId, currentUser]);
+
+  const targetBatchRank = useMemo(() => {
+    if (!targetProfile || !targetProfile.id) return '—';
+    const batchList = profiles
+      .filter(p => !targetProfile.batch_number || p.batch_number === targetProfile.batch_number)
+      .sort((a, b) => (b.points || 0) - (a.points || 0));
+    const idx = batchList.findIndex(p => p.id === targetProfile.id);
+    if (idx === -1) return '—';
+    return `#${idx + 1}`;
+  }, [profiles, targetProfile]);
+
+  // Leaderboard Qualified Profiles (must have completed at least one challenge, or points > 0)
+  const filteredLeaderboardProfiles = useMemo(() => {
+    const completedUserIds = new Set(allCompletedProgress.map(cp => cp.user_id));
+    let list = profiles.filter(p => completedUserIds.has(p.id) || p.points > 0);
+
+    if (selectedBatchFilter !== 'All departments') {
+      list = list.filter(p => p.batch_number === selectedBatchFilter);
+    }
+
+    return list.sort((a, b) => (b.points || 0) - (a.points || 0));
+  }, [profiles, allCompletedProgress, selectedBatchFilter]);
+
+  const top1 = filteredLeaderboardProfiles[0];
+  const top2 = filteredLeaderboardProfiles[1];
+  const top3 = filteredLeaderboardProfiles[2];
+
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+
+  // Authentication Submission
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setAuthLoading(true);
-
-    const isUserAdmin = authEmail.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
     try {
       if (authMode === 'signup') {
@@ -273,104 +389,145 @@ export default function App() {
         }
 
         const { data, error } = await supabase.auth.signUp({
-          email: authEmail,
+          email: authEmail.trim(),
           password: authPassword,
           options: {
             data: {
-              full_name: authName
+              full_name: authName.trim()
             }
           }
         });
 
-        const newProfile: Profile = {
-          id: data?.user?.id || `user-${Date.now()}`,
-          email: authEmail.trim().toLowerCase(),
-          full_name: authName.trim(),
-          department: 'CSE',
-          roll_number: '221-15-5000',
-          batch_number: 'Batch 55',
-          profile_completed: false,
-          points: isUserAdmin ? 380 : 0,
-          current_streak: 1,
-          longest_streak: 1,
-          is_admin: isUserAdmin,
-          is_banned: false
-        };
-
-        setCurrentUser(newProfile);
-        setProfiles(prev => [newProfile, ...prev]);
-        setSetupFullName(authName.trim());
-
         if (error) {
-          console.warn('Supabase signup notice:', error.message);
-          showToast(`Account created for ${authName}!`);
-        } else {
-          showToast('Account created successfully! Complete your profile.');
+          setAuthError(error.message);
+          setAuthLoading(false);
+          return;
         }
-        setCurrentPage('profile-setup');
-      } else {
-        // Login mode
-        const existingProfile = profiles.find(p => p.email?.toLowerCase() === authEmail.trim().toLowerCase());
 
+        if (data.user) {
+          const isUserAdmin = authEmail.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          const newProfile: Profile = {
+            id: data.user.id,
+            email: authEmail.trim().toLowerCase(),
+            full_name: authName.trim(),
+            department: '',
+            roll_number: '',
+            batch_number: '',
+            profile_completed: false,
+            points: 0,
+            current_streak: 0,
+            longest_streak: 0,
+            is_admin: isUserAdmin,
+            is_banned: false
+          };
+
+          await updateProfile(data.user.id, newProfile);
+          setCurrentUser(newProfile);
+          setProfiles(prev => [newProfile, ...prev.filter(p => p.id !== newProfile.id)]);
+
+          // Initialize Profile Setup form with empty/blank fields
+          setSetupFullName(authName.trim());
+          setSetupDepartment('');
+          setSetupRoll('');
+          setSetupBatch('');
+          setSetupFb('');
+          setSetupTelegram('');
+          setSetupWhatsapp('');
+          setSetupAvatarPreview(null);
+
+          showToast('Account created successfully! Please complete your profile.');
+          setCurrentPage('profile-setup');
+          await refreshAppData(data.user.id);
+        }
+      } else {
+        // Login Mode
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: authEmail,
+          email: authEmail.trim(),
           password: authPassword
         });
 
         if (error) {
-          console.warn('Supabase login notice:', error.message);
-          // If mock login, find matching profile or create fallback
-          if (existingProfile) {
-            setCurrentUser({
-              ...existingProfile,
-              is_admin: isUserAdmin
+          setAuthError(error.message);
+          setAuthLoading(false);
+          return;
+        }
+
+        if (data.user) {
+          let userProf = await getProfile(data.user.id);
+          if (!userProf) {
+            userProf = await ensureProfile({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: data.user.user_metadata?.full_name
             });
-            showToast(`Welcome back, ${existingProfile.full_name}! ${isUserAdmin ? '(Admin Access)' : ''}`);
+          }
+
+          setCurrentUser(userProf);
+          await refreshAppData(data.user.id);
+          showToast(`Welcome back, ${userProf.full_name || 'Student'}!`);
+
+          if (!userProf.profile_completed) {
+            setCurrentPage('profile-setup');
           } else {
-            const fallbackUser: Profile = {
-              id: `user-${Date.now()}`,
-              email: authEmail.trim().toLowerCase(),
-              full_name: authEmail.split('@')[0],
-              department: 'CSE',
-              roll_number: '221-15-5000',
-              batch_number: 'Batch 55',
-              profile_completed: true,
-              points: isUserAdmin ? 380 : 50,
-              current_streak: 3,
-              longest_streak: 5,
-              is_admin: isUserAdmin,
-              is_banned: false
-            };
-            setCurrentUser(fallbackUser);
-            setProfiles(prev => [fallbackUser, ...prev]);
-            showToast(`Welcome back! ${isUserAdmin ? '(Admin Access)' : ''}`);
+            setCurrentPage('discover');
           }
-          setCurrentPage('discover');
-        } else {
-          if (data.user) {
-            await fetchUserProfile(data.user.id, authEmail);
-          }
-          showToast(`Welcome back! ${isUserAdmin ? '(Admin Access)' : ''}`);
-          setCurrentPage('discover');
         }
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Authentication error. Continuing in demo mode.');
-      setCurrentPage('discover');
+      setAuthError(err.message || 'An unexpected error occurred.');
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Profile Setup Save Handler (Requires at least ONE social link)
+  // Sign Out Handler
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser({
+        id: '',
+        email: '',
+        full_name: 'Guest User',
+        department: '',
+        roll_number: '',
+        batch_number: '',
+        profile_completed: false,
+        points: 0,
+        current_streak: 0,
+        longest_streak: 0,
+        is_admin: false,
+        is_banned: false
+      });
+      setActiveProgress(null);
+      setUserBadgeIds([]);
+      setAuthEmail('');
+      setAuthPassword('');
+      setAuthName('');
+      setCurrentPage('login');
+      showToast('You have been signed out.');
+    } catch (err) {
+      console.error('Error signing out:', err);
+    }
+  };
+
+  // Profile Setup Submission
   const handleSaveProfileSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSetupError(null);
+    setSetupLoading(true);
 
     const hasAtLeastOneSocial = setupFb.trim() || setupTelegram.trim() || setupWhatsapp.trim();
 
     if (!hasAtLeastOneSocial) {
       setSetupError('At least one contact link (Facebook, Telegram, or WhatsApp) is required to complete profile setup!');
+      setSetupLoading(false);
+      return;
+    }
+
+    if (!currentUser.id) {
+      setSetupError('Session expired. Please log in again.');
+      setSetupLoading(false);
+      setCurrentPage('login');
       return;
     }
 
@@ -380,43 +537,42 @@ export default function App() {
       department: setupDepartment.trim() || currentUser.department,
       roll_number: setupRoll.trim() || currentUser.roll_number,
       batch_number: setupBatch.trim() || currentUser.batch_number,
+      avatar_url: setupAvatarPreview || currentUser.avatar_url || undefined,
       fb_link: setupFb.trim() || undefined,
       telegram_link: setupTelegram.trim() || undefined,
       whatsapp_link: setupWhatsapp.trim() || undefined,
       profile_completed: true
     };
 
-    setCurrentUser(updatedProfile);
-
-    // Update in profiles list
-    setProfiles(prev => prev.map(p => p.id === currentUser.id ? updatedProfile : p));
-
-    // Try Supabase update
-    try {
-      await supabase
-        .from('profiles')
-        .update({
-          full_name: updatedProfile.full_name,
-          department: updatedProfile.department,
-          roll_number: updatedProfile.roll_number,
-          batch_number: updatedProfile.batch_number,
-          fb_link: updatedProfile.fb_link,
-          telegram_link: updatedProfile.telegram_link,
-          whatsapp_link: updatedProfile.whatsapp_link,
-          profile_completed: true
-        })
-        .eq('id', currentUser.id);
-    } catch {
-      // Offline fallback
+    const { success, error } = await updateProfile(currentUser.id, updatedProfile);
+    if (!success) {
+      setSetupError(error || 'Failed to save profile to database.');
+      setSetupLoading(false);
+      return;
     }
 
+    setCurrentUser(updatedProfile);
+    setProfiles(prev => prev.map(p => p.id === currentUser.id ? updatedProfile : p));
+    setSetupLoading(false);
     showToast('Profile setup completed successfully!');
     setCurrentPage('discover');
+    await refreshAppData(currentUser.id);
   };
 
-  // Start Skill Challenge Handler
-  const handleStartSkill = (days: number, hours: number) => {
-    // 1. Check if profile is completed
+  // Avatar Upload Handler
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSetupAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Start Skill Challenge
+  const handleStartSkill = async (days: number, hours: number) => {
     if (!currentUser.profile_completed) {
       showToast('Please complete your profile setup before starting a skill challenge!');
       setIsDeadlineModalOpen(false);
@@ -424,1498 +580,1442 @@ export default function App() {
       return;
     }
 
-    // 2. Check if user already has an active challenge in progress
     if (activeProgress && activeProgress.status === 'in_progress') {
-      showToast('You already have an active challenge. Finish or wait for it to expire before starting another.');
+      showToast('You already have an active challenge. Complete or cancel it before starting another.');
       setIsDeadlineModalOpen(false);
       setCurrentPage('dashboard');
       return;
     }
 
-    // 3. Calculate deadline_at = current timestamp + (days * 24 + hours) hours
     const targetSkill = skills.find(s => s.id === selectedSkillId) || skills[0];
-    const startedAt = new Date();
-    const totalDurationHours = Math.max(1, days * 24 + hours);
-    const durationMs = totalDurationHours * 60 * 60 * 1000;
-    const deadlineAt = new Date(startedAt.getTime() + durationMs);
+    const totalHours = Math.max(1, days * 24 + hours);
 
-    // 4. Insert new user progress row
-    const newProgress: UserProgress = {
-      id: `progress-${Date.now()}`,
-      user_id: currentUser.id,
-      skill_id: targetSkill.id,
-      started_at: startedAt.toISOString(),
-      deadline_at: deadlineAt.toISOString(),
-      status: 'in_progress',
-      points_awarded: 10,
-      skill: targetSkill,
-      steps_completed: []
-    };
-
-    setActiveProgress(newProgress);
-    setIsDeadlineModalOpen(false);
-    showToast(`Started ${targetSkill.name} challenge! Deadline: ${days > 0 ? `${days}d ` : ''}${hours > 0 ? `${hours}h` : ''}`);
-    
-    // 5. Redirect to Dashboard with live countdown
-    setCurrentPage('dashboard');
-
-    // Sync with Supabase user_progress table
-    try {
-      supabase.from('user_progress').insert({
-        user_id: currentUser.id,
-        skill_id: targetSkill.id,
-        started_at: startedAt.toISOString(),
-        deadline_at: deadlineAt.toISOString(),
-        status: 'in_progress',
-        points_awarded: 10
-      });
-    } catch {
-      // Handled locally
+    const progress = await startSkillChallenge(currentUser.id, targetSkill.id, totalHours);
+    if (progress) {
+      setActiveProgress(progress);
+      setIsDeadlineModalOpen(false);
+      showToast(`Started ${targetSkill.name} challenge! Deadline: ${days > 0 ? `${days}d ` : ''}${hours > 0 ? `${hours}h` : ''}`);
+      setCurrentPage('dashboard');
+    } else {
+      showToast('Could not start challenge. Please try again.');
     }
   };
 
-  // Add Extra Time to Active Challenge
-  const handleAddExtraTime = (extraDays: number, extraHours: number) => {
-    if (!activeProgress || activeProgress.status !== 'in_progress') return;
-
-    const currentDeadline = new Date(activeProgress.deadline_at);
-    const extraMs = (extraDays * 24 + extraHours) * 60 * 60 * 1000;
-    const newDeadline = new Date(currentDeadline.getTime() + extraMs);
-
-    const updatedProgress: UserProgress = {
-      ...activeProgress,
-      deadline_at: newDeadline.toISOString()
-    };
-
-    setActiveProgress(updatedProgress);
-    showToast(`Added ${extraDays > 0 ? `${extraDays}d ` : ''}${extraHours > 0 ? `${extraHours}h` : ''} to your active challenge!`);
-
-    try {
-      supabase.from('user_progress').update({
-        deadline_at: newDeadline.toISOString()
-      }).eq('id', activeProgress.id);
-    } catch {
-      // Handled locally
-    }
-  };
-
-  // Cancel Active Challenge Handler (Fully deletes row, no points deducted)
+  // Cancel Active Challenge
   const handleCancelChallenge = async () => {
     if (!activeProgress) return;
     const progressId = activeProgress.id;
     const targetSkill = skills.find(s => s.id === activeProgress.skill_id);
     const skillName = targetSkill?.name || 'Skill';
 
-    // 1. Delete from local state and localStorage immediately
     setActiveProgress(null);
-    try {
-      localStorage.setItem('skill_active_progress', 'null');
-      localStorage.removeItem('skill_active_progress');
-    } catch (e) {
-      console.error(e);
-    }
     setIsCancelModalOpen(false);
     showToast(`Challenge for ${skillName} has been cancelled.`);
 
-    // 2. Delete row from Supabase user_progress (no failed records kept, no points deducted)
-    try {
-      await supabase.from('user_progress').delete().eq('id', progressId);
-    } catch (err) {
-      console.error('Failed to delete progress row:', err);
-    }
+    await cancelProgress(progressId);
+    await refreshAppData(currentUser.id);
   };
 
   // Complete Active Challenge
-  const handleCompleteActiveChallenge = () => {
+  const handleCompleteActiveChallenge = async () => {
     if (!activeProgress || activeProgress.status !== 'in_progress') return;
 
     const skill = skills.find(s => s.id === activeProgress.skill_id) || skills[0];
-    const completedAt = new Date().toISOString();
-    const awarded = 10;
+    const progressId = activeProgress.id;
 
-    // Clear active challenge
-    const previousProgressId = activeProgress.id;
+    const { success, newPoints, newStreak } = await completeChallenge(
+      progressId,
+      currentUser.id,
+      currentUser.points,
+      currentUser.current_streak,
+      activeProgress.skill_id
+    );
+
     setActiveProgress(null);
-    try {
-      localStorage.setItem('skill_active_progress', 'null');
-      localStorage.removeItem('skill_active_progress');
-    } catch (e) {
-      console.error(e);
-    }
 
-    // Update user points and streak
-    const newPoints = currentUser.points + awarded;
-    const newStreak = currentUser.current_streak + 1;
     const updatedUser = {
       ...currentUser,
       points: newPoints,
       current_streak: newStreak
     };
     setCurrentUser(updatedUser);
-
-    // Update profile in list
     setProfiles(prev => prev.map(p => p.id === currentUser.id ? updatedUser : p));
 
-    // Add to completed skills list
-    setCompletedSkillsMap(prev => ({
-      ...prev,
-      [currentUser.id]: [
-        {
-          skillName: skill.name,
-          icon: skill.icon || 'S',
-          bg: skill.bg_color || '#6c5ce7',
-          duration: `Finished on time (+10 pts)`,
-          completedAt: 'Just now'
-        },
-        ...(prev[currentUser.id] || [])
-      ]
-    }));
-
-    // Check Badges Unlock
-    setBadges(prev => prev.map(b => {
-      if (b.id === 'badge-3' && (completedSkillsMap[currentUser.id]?.length || 0) + 1 >= 5) {
-        return { ...b, unlocked: true, icon_symbol: '📚' };
-      }
-      if (b.id === 'badge-6' && newPoints >= 300) {
-        return { ...b, unlocked: true };
-      }
-      return b;
-    }));
-
-    showToast(`🎉 Congratulations! You completed ${skill.name} and earned +${awarded} points!`);
-
-    // Sync with Supabase
-    try {
-      supabase.from('user_progress').update({
-        status: 'completed',
-        completed_at: completedAt
-      }).eq('id', previousProgressId);
-
-      supabase.from('profiles').update({
-        points: newPoints,
-        current_streak: newStreak
-      }).eq('id', currentUser.id);
-    } catch {
-      // Handled
-    }
+    showToast(`🎉 Congratulations! You completed ${skill.name} and earned +10 points!`);
+    await refreshAppData(currentUser.id);
   };
 
-  // Toggle step completion in active challenge
-  const handleToggleStep = (stepOrder: number) => {
+  // Add Extra Time to Active Challenge
+  const handleAddExtraTime = async (extraDays: number, extraHours: number) => {
+    if (!activeProgress || activeProgress.status !== 'in_progress') return;
+
+    const currentDeadline = new Date(activeProgress.deadline_at);
+    const extraMs = (extraDays * 24 + extraHours) * 60 * 60 * 1000;
+    const newDeadline = new Date(currentDeadline.getTime() + extraMs);
+    const newDeadlineIso = newDeadline.toISOString();
+
+    const updatedProgress: UserProgress = {
+      ...activeProgress,
+      deadline_at: newDeadlineIso
+    };
+
+    setActiveProgress(updatedProgress);
+    showToast(`Added ${extraDays > 0 ? `${extraDays}d ` : ''}${extraHours > 0 ? `${extraHours}h` : ''} to your active challenge!`);
+
+    await addExtraTimeToProgress(activeProgress.id, newDeadlineIso);
+  };
+
+  // Toggle Step Checkmark in Active Challenge
+  const handleToggleStep = async (stepOrder: number) => {
     if (!activeProgress) return;
     const currentSteps = activeProgress.steps_completed || [];
     const newSteps = currentSteps.includes(stepOrder)
       ? currentSteps.filter(s => s !== stepOrder)
       : [...currentSteps, stepOrder];
 
-    setActiveProgress({
+    const updated = {
       ...activeProgress,
       steps_completed: newSteps
-    });
-  };
-
-  // Active Skill Object
-  const currentSkill = useMemo(() => {
-    return skills.find(s => s.id === selectedSkillId) || skills[0];
-  }, [skills, selectedSkillId]);
-
-  // Current Skill Steps
-  const currentSkillSteps = useMemo(() => {
-    return roadmapSteps[selectedSkillId] || [];
-  }, [roadmapSteps, selectedSkillId]);
-
-  // Selected Field object
-  const selectedField = useMemo(() => {
-    return fields.find(f => f.id === selectedFieldId) || fields[0];
-  }, [fields, selectedFieldId]);
-
-  // Skills belonging to selected Field
-  const skillsInSelectedField = useMemo(() => {
-    if (!selectedFieldId) return [];
-    return skills.filter(s => s.field_id === selectedFieldId);
-  }, [skills, selectedFieldId]);
-
-  // All skills filtered by search query
-  const allSearchedSkills = useMemo(() => {
-    if (!searchQuery.trim()) return skills;
-    const q = searchQuery.toLowerCase().trim();
-    return skills.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      s.description.toLowerCase().includes(q)
-    );
-  }, [skills, searchQuery]);
-
-  // Popular skills for main Discover page (top learner count / curated picks)
-  const popularSkills = useMemo(() => {
-    return [...skills].sort((a, b) => (b.learner_count || 0) - (a.learner_count || 0)).slice(0, 8);
-  }, [skills]);
-
-  // Leaderboard Sorted Profiles
-  const filteredLeaderboardProfiles = useMemo(() => {
-    let list = [...profiles];
-    if (selectedBatchFilter !== 'All departments') {
-      list = list.filter(p => p.batch_number === selectedBatchFilter);
-    }
-    return list.sort((a, b) => b.points - a.points);
-  }, [profiles, selectedBatchFilter]);
-
-  // Top 3 Podium
-  const top1 = filteredLeaderboardProfiles[0];
-  const top2 = filteredLeaderboardProfiles[1];
-  const top3 = filteredLeaderboardProfiles[2];
-
-  // Admin Actions
-  const handleBanToggle = (userId: string) => {
-    setProfiles(prev => prev.map(p => {
-      if (p.id === userId) {
-        const updated = { ...p, is_banned: !p.is_banned };
-        showToast(`${p.full_name} is now ${updated.is_banned ? 'Banned' : 'Active'}`);
-        return updated;
-      }
-      return p;
-    }));
-  };
-
-  const handleSaveSkill = (skillData: Partial<Skill>) => {
-    if (editingSkill) {
-      setSkills(prev => prev.map(s => s.id === editingSkill.id ? { ...s, ...skillData } as Skill : s));
-      showToast(`Updated skill ${skillData.name}`);
-    } else {
-      const newSkill: Skill = {
-        id: skillData.id || `skill-${Date.now()}`,
-        name: skillData.name || 'New Skill',
-        description: skillData.description || '',
-        order_index: skills.length + 1,
-        icon: skillData.icon || 'S',
-        bg_color: skillData.bg_color || '#6c5ce7',
-        difficulty: skillData.difficulty || 'Beginner',
-        avg_days: skillData.avg_days || '3 days',
-        learner_count: 1,
-        step_count: 1
-      };
-      setSkills(prev => [...prev, newSkill]);
-      setRoadmapSteps(prev => ({
-        ...prev,
-        [newSkill.id]: [
-          {
-            id: `step-${newSkill.id}-1`,
-            skill_id: newSkill.id,
-            title: 'Getting Started',
-            description: 'Fundamental setup, documentation review, and core syntax',
-            step_order: 1
-          }
-        ]
-      }));
-      showToast(`Added new skill track ${newSkill.name}`);
-    }
-    setEditingSkill(null);
-  };
-
-  const handleDeleteSkill = (skillId: string) => {
-    setSkills(prev => prev.filter(s => s.id !== skillId));
-    showToast('Skill deleted');
-  };
-
-  const handleAddStep = (stepData: Partial<RoadmapStep>) => {
-    const newStep: RoadmapStep = {
-      id: stepData.id || `step-${Date.now()}`,
-      skill_id: stepData.skill_id!,
-      title: stepData.title || 'New Step',
-      description: stepData.description || '',
-      step_order: stepData.step_order || 1,
-      resource_link: stepData.resource_link
     };
-    setRoadmapSteps(prev => ({
-      ...prev,
-      [stepData.skill_id!]: [...(prev[stepData.skill_id!] || []), newStep]
-    }));
-    showToast(`Added step to roadmap`);
+    setActiveProgress(updated);
+
+    try {
+      await supabase
+        .from('user_progress')
+        .update({ steps_completed: newSteps })
+        .eq('id', activeProgress.id);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleDeleteStep = (skillId: string, stepId: string) => {
-    setRoadmapSteps(prev => ({
-      ...prev,
-      [skillId]: prev[skillId].filter(s => s.id !== stepId)
-    }));
-    showToast('Step removed');
-  };
-
-  // Helper to open public profile
+  // Open Public Profile
   const handleOpenUserProfile = (userId: string) => {
     setSelectedUserId(userId);
     setCurrentPage('profile');
   };
 
-  // Selected Profile Data
-  const targetProfile = profiles.find(p => p.id === selectedUserId) || currentUser;
-  const targetUserCompletedSkills = completedSkillsMap[targetProfile.id] || [];
+  // Admin Ban Toggle
+  const handleBanToggle = async (userId: string) => {
+    const userToToggle = profiles.find(p => p.id === userId);
+    if (!userToToggle) return;
+    const newStatus = !userToToggle.is_banned;
+    await updateProfile(userId, { is_banned: newStatus });
+    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, is_banned: newStatus } : p));
+    showToast(`${userToToggle.full_name} is now ${newStatus ? 'Banned' : 'Active'}`);
+  };
+
+  // Admin Add/Edit Skill
+  const handleSaveSkill = (skillData: Partial<Skill>) => {
+    if (editingSkill) {
+      setSkills(prev => prev.map(s => s.id === editingSkill.id ? { ...s, ...skillData } as Skill : s));
+      showToast(`Updated skill: ${skillData.name}`);
+    } else {
+      const newSkill: Skill = {
+        id: `skill-${Date.now()}`,
+        field_id: skillData.field_id || 'field-1',
+        name: skillData.name || 'New Skill',
+        description: skillData.description || '',
+        order_index: skills.length + 1,
+        icon: skillData.icon || '★',
+        bg_color: skillData.bg_color || '#6c5ce7',
+        difficulty: skillData.difficulty || 'Beginner',
+        avg_days: skillData.avg_days || '3 days',
+        learner_count: 0,
+        step_count: 3
+      };
+      setSkills(prev => [...prev, newSkill]);
+      showToast(`Added new skill: ${newSkill.name}`);
+    }
+    setIsSkillModalOpen(false);
+    setEditingSkill(null);
+  };
+
+  const handleDeleteSkill = (skillId: string) => {
+    const skillToDelete = skills.find(s => s.id === skillId);
+    if (confirm(`Are you sure you want to delete "${skillToDelete?.name}"?`)) {
+      setSkills(prev => prev.filter(s => s.id !== skillId));
+      showToast(`Skill deleted`);
+    }
+  };
+
+  // Admin Add Step
+  const handleAddStep = (stepData: Partial<RoadmapStep>) => {
+    const newStep: RoadmapStep = {
+      id: `step-${Date.now()}`,
+      skill_id: currentSkill.id,
+      title: stepData.title || 'New Step',
+      description: stepData.description || '',
+      step_order: currentSkillSteps.length + 1,
+      resource_link: stepData.resource_link
+    };
+
+    setRoadmapSteps(prev => ({
+      ...prev,
+      [currentSkill.id]: [...(prev[currentSkill.id] || []), newStep]
+    }));
+
+    setIsStepModalOpen(false);
+    showToast(`Added step "${newStep.title}" to ${currentSkill.name}`);
+  };
+
+  const handleDeleteStep = (skillId: string, stepId: string) => {
+    setRoadmapSteps(prev => ({
+      ...prev,
+      [skillId]: (prev[skillId] || []).filter(st => st.id !== stepId)
+    }));
+    showToast(`Roadmap step deleted`);
+  };
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7] pb-12 relative selection:bg-[#6c5ce7] selection:text-white">
+    <div className="min-h-screen bg-[#f4f5f8] text-[#1a1c2e] font-sans antialiased">
       
-      {/* Toast Notification */}
+      {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-[#1a1c2e] text-white border border-[#37f0ff]/40 shadow-2xl px-5 py-3 rounded-2xl z-50 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
-          <Sparkles className="w-4 h-4 text-[#37f0ff]" />
-          {toastMessage}
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1a1c2e] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-white/10 animate-fade-in text-sm font-medium">
+          <div className="w-2 h-2 rounded-full bg-[#00b894] animate-ping" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
+      {/* Main App Navigation Bar */}
+      <Navbar 
+        currentPage={currentPage}
+        setCurrentPage={(page) => {
+          if (page === 'discover') {
+            setDiscoverView('main');
+            setSelectedFieldId(null);
+          }
+          if (page === 'profile') {
+            setSelectedUserId(currentUser.id);
+          }
+          setCurrentPage(page);
+        }}
+        onNavigate={(page) => {
+          if (page === 'discover') {
+            setDiscoverView('main');
+            setSelectedFieldId(null);
+          }
+          if (page === 'profile') {
+            setSelectedUserId(currentUser.id);
+          }
+          setCurrentPage(page);
+        }}
+        currentUser={currentUser}
+        onSignOut={handleSignOut}
+        onSelectUserForProfile={(userId) => {
+          setSelectedUserId(userId);
+          setCurrentPage('profile');
+        }}
+      />
+
       {/* ========================================================================= */}
-      {/* AUTHENTICATION: LOGIN & SIGNUP (SAME PAGE WITH SMOOTH TOGGLE & GLOW) */}
+      {/* PAGE 1 — LOGIN / SIGNUP */}
       {/* ========================================================================= */}
       {(currentPage === 'login' || currentPage === 'signup') && (
-        <div className="dark-page" id="page-auth">
-          <div className="page-tag" style={{ background: '#37f0ff', color: '#03040a' }}>
-            PAGE 1 &amp; 2 — {authMode === 'login' ? 'LOGIN' : 'SIGN UP'}
-          </div>
-          <div className="bg-glow"></div>
+        <div className="page" id="page-login">
+          <div className="page-tag">PAGE 1 — LOGIN / SIGNUP</div>
           
-          <div className={`stage ${authMode === 'signup' ? 'swap-mode' : ''}`} id="auth-stage-container">
-            
-            {/* Visual Panel with Rotating Blurred Blob */}
-            <div className="visual" id="auth-visual-panel">
-              <div className="visual-blob"></div>
-              <div className="brand">
-                <div className="logo-badge">S</div>
-                <h1>{authMode === 'login' ? 'Welcome back' : 'Join SkillTrack'}</h1>
-                <p>
-                  {authMode === 'login' 
-                    ? 'Sign in to continue tracking your skills and climb the leaderboard.' 
-                    : 'Create your account and start racing the clock on your next skill.'}
-                </p>
+          <div className="auth-box shadow-xl">
+            <div className="logo-badge mb-4">DIU CSE</div>
+            <h2>{authMode === 'login' ? 'Welcome back' : 'Create account'}</h2>
+            <p className="subtitle">
+              {authMode === 'login' 
+                ? 'Sign in to access your roadmaps, track challenges and earn points' 
+                : 'Join DIU CSE Skill Tracker & compete on the leaderboards'}
+            </p>
+
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
               </div>
-            </div>
+            )}
 
-            {/* Form Panel */}
-            <div className="formside" id="auth-form-panel">
-              <div>
-                <div className="toggle-title">SkillTrack DIU</div>
-                <h2>{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
-
-                {authError && (
-                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{authError}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleAuthSubmit}>
-                  {authMode === 'signup' && (
-                    <div className="dark-field" id="field-full-name">
-                      <span className="flabel">FULL NAME</span>
-                      <input 
-                        type="text"
-                        className="finput"
-                        placeholder="e.g. Rakib Hassan"
-                        value={authName}
-                        onChange={(e) => setAuthName(e.target.value)}
-                        required
-                        id="input-auth-name"
-                      />
-                    </div>
-                  )}
-
-                  <div className="dark-field" id="field-email-address">
-                    <span className="flabel">EMAIL ADDRESS</span>
-                    <input 
-                      type="email"
-                      className="finput"
-                      placeholder="e.g. rakib.cse@diu.edu.bd"
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      required
-                      id="input-auth-email"
-                    />
-                  </div>
-
-                  <div className="dark-field" id="field-password">
-                    <span className="flabel">PASSWORD</span>
-                    <input 
-                      type="password"
-                      className="finput"
-                      placeholder="••••••••••"
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      required
-                      id="input-auth-password"
-                    />
-                  </div>
-
-                  <button 
-                    type="submit"
-                    className="dark-btn"
-                    disabled={authLoading}
-                    id="auth-submit-btn"
-                  >
-                    {authLoading 
-                      ? 'Connecting...' 
-                      : authMode === 'login' ? 'Log in' : 'Create account'}
-                  </button>
-                </form>
-
-                <div 
-                  className="dark-switch select-none"
-                  onClick={() => {
-                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                    setAuthError(null);
-                  }}
-                  id="auth-toggle-text-btn"
-                >
-                  {authMode === 'login' ? (
-                    <>New here? <b>Create an account</b></>
-                  ) : (
-                    <>Already have an account? <b>Log in</b></>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* NAVBAR (VISIBLE ON ALL INTERNAL PAGES) */}
-      {/* ========================================================================= */}
-      {currentPage !== 'login' && currentPage !== 'signup' && (
-        <Navbar 
-          currentPage={currentPage}
-          setCurrentPage={(page) => {
-            setCurrentPage(page);
-            if (page === 'discover') {
-              setDiscoverView('main');
-            }
-          }}
-          currentUser={currentUser}
-          onSignOut={() => {
-            supabase.auth.signOut();
-            setCurrentPage('login');
-            showToast('Signed out successfully.');
-          }}
-          onSelectUserForProfile={handleOpenUserProfile}
-        />
-      )}
-
-      {/* ========================================================================= */}
-      {/* PAGE 3 — PROFILE SETUP */}
-      {/* ========================================================================= */}
-      {currentPage === 'profile-setup' && (
-        <div className="page" id="page-profile-setup">
-          <div className="page-tag">PAGE 3 — PROFILE SETUP</div>
-
-          <div className="content pt-4 sm:pt-8 md:pt-10">
-            
-            {/* Segmented Progress Bar */}
-            <div className="setup-progress max-w-[640px] mx-auto mb-6">
-              <div className="seg done"></div>
-              <div className="seg done"></div>
-              <div className="seg"></div>
-            </div>
-
-            <div className="setup-card">
-              <div className="setup-heading">Set up your profile</div>
-              <div className="setup-sub">This helps others find and recognize you on the leaderboard</div>
-
-              {setupError && (
-                <div className="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>{setupError}</span>
+            <form onSubmit={handleAuthSubmit}>
+              {authMode === 'signup' && (
+                <div>
+                  <label className="field-label">Full Name</label>
+                  <input 
+                    type="text" 
+                    className="field-input" 
+                    placeholder="e.g. Md. Sohan Ali"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    required
+                    id="input-auth-name"
+                  />
                 </div>
               )}
 
-              <form onSubmit={handleSaveProfileSetup}>
-                
-                {/* Avatar upload */}
-                <label 
-                  htmlFor="avatar-file-input"
-                  className="avatar-upload cursor-pointer hover:bg-[#e8e4fe] transition-colors relative overflow-hidden group"
-                  title="Click to upload profile photo"
-                >
-                  {setupAvatarPreview ? (
-                    <img src={setupAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <Upload className="w-4 h-4 mb-1" />
-                      <span>Upload<br />photo</span>
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    id="avatar-file-input" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => setSetupAvatarPreview(reader.result as string);
-                        reader.readAsDataURL(file);
-                        showToast('Photo uploaded!');
-                      }
-                    }}
-                  />
-                </label>
-
-                <label className="field-label">Full name</label>
+              <div>
+                <label className="field-label">DIU Student Email</label>
                 <input 
-                  type="text" 
+                  type="email" 
                   className="field-input" 
-                  value={setupFullName}
-                  onChange={(e) => setSetupFullName(e.target.value)}
-                  placeholder="e.g. Rakib Hassan"
+                  placeholder="student@diu.edu.bd"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
                   required
+                  id="input-auth-email"
                 />
+              </div>
 
-                <div className="row2">
-                  <div>
-                    <label className="field-label">Department</label>
-                    <input 
-                      type="text" 
-                      className="field-input" 
-                      value={setupDepartment}
-                      onChange={(e) => setSetupDepartment(e.target.value)}
-                      placeholder="e.g. CSE"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label">Roll / ID number</label>
-                    <input 
-                      type="text" 
-                      className="field-input" 
-                      value={setupRoll}
-                      onChange={(e) => setSetupRoll(e.target.value)}
-                      placeholder="e.g. 221-15-4521"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <label className="field-label">Batch number</label>
+              <div>
+                <label className="field-label">Password</label>
                 <input 
-                  type="text" 
+                  type="password" 
                   className="field-input" 
-                  value={setupBatch}
-                  onChange={(e) => setSetupBatch(e.target.value)}
-                  placeholder="e.g. Batch 55"
+                  placeholder="••••••••"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
                   required
+                  id="input-auth-password"
                 />
+              </div>
 
-                <label className="field-label" style={{ marginTop: '4px' }}>
-                  Contact link (at least one required)
-                </label>
+              <button 
+                type="submit" 
+                className="btn-submit hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                disabled={authLoading}
+                id="btn-auth-submit"
+              >
+                {authLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                {authMode === 'login' ? 'Sign In to Portal' : 'Create Account'}
+              </button>
+            </form>
 
-                {/* Facebook */}
-                <div className="social-box">
-                  <div className="social-icon" style={{ background: '#3b5998' }}>f</div>
-                  <input 
-                    type="text" 
-                    className="w-full bg-transparent outline-none text-[13px] text-[#1a1c2e]" 
-                    placeholder="facebook.com/your.username"
-                    value={setupFb}
-                    onChange={(e) => setSetupFb(e.target.value)}
-                  />
-                </div>
+            <div className="divider">or</div>
 
-                {/* Telegram */}
-                <div className="social-box">
-                  <div className="social-icon" style={{ background: '#0088cc' }}>T</div>
-                  <input 
-                    type="text" 
-                    className="w-full bg-transparent outline-none text-[13px] text-[#1a1c2e]" 
-                    placeholder="t.me/your_telegram (optional)"
-                    value={setupTelegram}
-                    onChange={(e) => setSetupTelegram(e.target.value)}
-                  />
-                </div>
-
-                {/* WhatsApp */}
-                <div className="social-box">
-                  <div className="social-icon" style={{ background: '#25d366' }}>W</div>
-                  <input 
-                    type="text" 
-                    className="w-full bg-transparent outline-none text-[13px] text-[#1a1c2e]" 
-                    placeholder="+88017... WhatsApp number (optional)"
-                    value={setupWhatsapp}
-                    onChange={(e) => setSetupWhatsapp(e.target.value)}
-                  />
-                </div>
-
-                <div className="social-note">
-                  At least one of Facebook, Telegram, or WhatsApp is required to complete setup — this is how batchmates connect with you for study help.
-                </div>
-
-                <div className="btn-row">
-                  <button 
-                    type="button"
-                    className="btn-ghost cursor-pointer hover:bg-slate-50 transition-colors"
+            <div className="text-center text-xs text-[#8a8ca3]">
+              {authMode === 'login' ? (
+                <>
+                  Don't have an account?{' '}
+                  <span 
                     onClick={() => {
-                      showToast('Browsing in guest mode. Note: Profile setup required to start skill challenges.');
-                      setCurrentPage('discover');
+                      setAuthMode('signup');
+                      setAuthError(null);
                     }}
-                    id="btn-skip-setup"
+                    className="text-[#6c5ce7] font-bold cursor-pointer hover:underline"
+                    id="link-switch-to-signup"
                   >
-                    Skip for now
-                  </button>
-                  <button 
-                    type="submit"
-                    className="btn-primary flex1 cursor-pointer hover:opacity-90 transition-opacity"
-                    id="btn-complete-setup"
+                    Sign up now
+                  </span>
+                </>
+              ) : (
+                <>
+                  Already registered?{' '}
+                  <span 
+                    onClick={() => {
+                      setAuthMode('login');
+                      setAuthError(null);
+                    }}
+                    className="text-[#6c5ce7] font-bold cursor-pointer hover:underline"
+                    id="link-switch-to-login"
                   >
-                    Complete setup
-                  </button>
-                </div>
-              </form>
-
+                    Sign in here
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* PAGE 4 — DISCOVER (HOME) */}
+      {/* PAGE 2 — PROFILE SETUP & SETTINGS */}
+      {/* ========================================================================= */}
+      {currentPage === 'profile-setup' && (
+        <div className="page" id="page-profile-setup">
+          <div className="page-tag">PAGE 2 — STUDENT PROFILE SETTINGS</div>
+
+          <div className="profile-edit-wrapper">
+            
+            {/* Header / Breadcrumb Bar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <div>
+                {currentUser.profile_completed && (
+                  <button 
+                    onClick={() => setCurrentPage('profile')}
+                    className="text-xs font-bold text-[#6c5ce7] hover:underline flex items-center gap-1.5 mb-2 transition-all"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to My Profile
+                  </button>
+                )}
+                <h1 className="text-2xl sm:text-3xl font-black text-[#1a1c2e] tracking-tight">
+                  {currentUser.profile_completed ? 'Edit Profile & Settings' : 'Complete Your Profile'}
+                </h1>
+                <p className="text-xs text-[#8a8ca3] mt-1">
+                  Keep your academic credentials and peer contact channels accurate for leaderboard rankings.
+                </p>
+              </div>
+
+              {currentUser.email && (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#e2e8f0] text-xs font-semibold text-[#64748b] shadow-xs">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>{currentUser.email}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Error Banner */}
+            {setupError && (
+              <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200/80 text-red-600 text-xs font-semibold flex items-center gap-3 shadow-xs">
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+                <span>{setupError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfileSetup}>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Left Column: Identity Preview & Avatar (4 cols) */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="profile-edit-card text-center">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#8a8ca3] mb-4">
+                      Profile Avatar
+                    </div>
+
+                    {/* Interactive Avatar Upload */}
+                    <div className="relative inline-block mb-3">
+                      <div className="profile-avatar-uploader">
+                        {setupAvatarPreview ? (
+                          <img src={setupAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-white text-3xl font-black">
+                            {setupFullName ? setupFullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'DIU'}
+                          </span>
+                        )}
+                        <label 
+                          htmlFor="avatar-file-input" 
+                          className="avatar-overlay"
+                        >
+                          <Camera className="w-5 h-5 mb-1" />
+                          <span className="text-[10px] font-bold">Change Photo</span>
+                        </label>
+                      </div>
+
+                      <input 
+                        id="avatar-file-input"
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleAvatarFileChange}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <label 
+                        htmlFor="avatar-file-input"
+                        className="text-xs font-bold text-[#6c5ce7] hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Upload New
+                      </label>
+                      {setupAvatarPreview && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSetupAvatarPreview(null)}
+                            className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Remove
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Preview Student Identity Card */}
+                    <div className="pt-4 border-t border-[#f1f5f9] text-left space-y-2">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8a8ca3]">Live Preview</div>
+                      <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+                        <div className="font-bold text-sm text-[#1a1c2e] truncate">
+                          {setupFullName || 'Student Name'}
+                        </div>
+                        <div className="text-xs text-[#64748b] mt-0.5">
+                          {setupDepartment || 'Dept'} · {setupBatch || 'Batch'}
+                        </div>
+                        <div className="text-[11px] font-mono text-[#8a8ca3] mt-1">
+                          ID: {setupRoll || 'Not Set'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Academic Stat Pill */}
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+                      <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100">
+                        <div className="text-xs font-black text-[#6c5ce7]">⚡ {currentUser.points}</div>
+                        <div className="text-[10px] text-[#64748b] font-medium">Total Points</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-100">
+                        <div className="text-xs font-black text-orange-600">🔥 {currentUser.current_streak}d</div>
+                        <div className="text-[10px] text-[#64748b] font-medium">Active Streak</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Academic & Social Forms (8 cols) */}
+                <div className="lg:col-span-8 space-y-6">
+                  
+                  {/* Card 1: Academic Credentials */}
+                  <div className="profile-edit-card space-y-4">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-[#f1f5f9]">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-[#6c5ce7] flex items-center justify-center">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-[#1a1c2e]">Academic Credentials</h3>
+                        <p className="text-[11px] text-[#8a8ca3]">Official university details verified for batch-wise leaderboards.</p>
+                      </div>
+                    </div>
+
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                        Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="input-with-icon-wrap">
+                        <User className="icon-leading" />
+                        <input 
+                          type="text" 
+                          className="input-styled" 
+                          placeholder="e.g. Md. Sohan Ali"
+                          value={setupFullName}
+                          onChange={(e) => setSetupFullName(e.target.value)}
+                          required
+                          id="input-setup-fullname"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Department & Batch Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                          Department <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="input-with-icon-wrap">
+                          <Building2 className="icon-leading" />
+                          <select 
+                            className="input-styled"
+                            value={setupDepartment}
+                            onChange={(e) => setSetupDepartment(e.target.value)}
+                            required
+                            id="select-setup-dept"
+                          >
+                            <option value="">Select Department</option>
+                            <option value="CSE">Department of CSE</option>
+                            <option value="SWE">Department of SWE</option>
+                            <option value="CIS">Department of CIS</option>
+                            <option value="EEE">Department of EEE</option>
+                          </select>
+                          <ChevronRight className="icon-trailing-arrow w-4 h-4 rotate-90" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                          Batch Number <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="input-with-icon-wrap">
+                          <Hash className="icon-leading" />
+                          <select 
+                            className="input-styled"
+                            value={setupBatch}
+                            onChange={(e) => setSetupBatch(e.target.value)}
+                            required
+                            id="select-setup-batch"
+                          >
+                            <option value="">Select Batch</option>
+                            <option value="Batch 50">Batch 50</option>
+                            <option value="Batch 51">Batch 51</option>
+                            <option value="Batch 52">Batch 52</option>
+                            <option value="Batch 53">Batch 53</option>
+                            <option value="Batch 54">Batch 54</option>
+                            <option value="Batch 55">Batch 55</option>
+                            <option value="Batch 56">Batch 56</option>
+                            <option value="Batch 57">Batch 57</option>
+                            <option value="Batch 58">Batch 58</option>
+                            <option value="Batch 59">Batch 59</option>
+                            <option value="Batch 60">Batch 60</option>
+                            <option value="Batch 61">Batch 61</option>
+                            <option value="Batch 62">Batch 62</option>
+                          </select>
+                          <ChevronRight className="icon-trailing-arrow w-4 h-4 rotate-90" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Student ID */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                        Student ID / Roll Number <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="input-with-icon-wrap">
+                        <Hash className="icon-leading" />
+                        <input 
+                          type="text" 
+                          className="input-styled" 
+                          placeholder="e.g. 221-15-5001"
+                          value={setupRoll}
+                          onChange={(e) => setSetupRoll(e.target.value)}
+                          required
+                          id="input-setup-roll"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Social & Peer Communication Contacts */}
+                  <div className="profile-edit-card space-y-4">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-[#f1f5f9]">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Share2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-[#1a1c2e]">Peer Contact &amp; Social Links</h3>
+                        <p className="text-[11px] text-[#8a8ca3]">
+                          Provide at least one channel so study peers and faculty can reach you.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Facebook */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                        Facebook Profile URL or Username
+                      </label>
+                      <div className="input-with-icon-wrap">
+                        <span className="icon-leading text-blue-600 font-bold text-sm">f</span>
+                        <input 
+                          type="text" 
+                          className="input-styled" 
+                          placeholder="e.g. https://facebook.com/username or @username"
+                          value={setupFb}
+                          onChange={(e) => setSetupFb(e.target.value)}
+                          id="input-setup-fb"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Telegram & WhatsApp Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                          Telegram Handle
+                        </label>
+                        <div className="input-with-icon-wrap">
+                          <MessageSquare className="icon-leading text-sky-500" />
+                          <input 
+                            type="text" 
+                            className="input-styled" 
+                            placeholder="@username or t.me/..."
+                            value={setupTelegram}
+                            onChange={(e) => setSetupTelegram(e.target.value)}
+                            id="input-setup-telegram"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
+                          WhatsApp Number
+                        </label>
+                        <div className="input-with-icon-wrap">
+                          <Phone className="icon-leading text-emerald-500" />
+                          <input 
+                            type="text" 
+                            className="input-styled" 
+                            placeholder="+8801700000000"
+                            value={setupWhatsapp}
+                            onChange={(e) => setSetupWhatsapp(e.target.value)}
+                            id="input-setup-whatsapp"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sticky / Action Footer */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                    <div className="text-xs text-[#8a8ca3] text-center sm:text-left">
+                      Changes will be saved immediately to your cloud profile.
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      {currentUser.profile_completed && (
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage('profile')}
+                          className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:bg-[#f8fafc] transition-colors"
+                        >
+                          Discard
+                        </button>
+                      )}
+                      <button 
+                        type="submit" 
+                        className="flex-1 sm:flex-none px-6 py-2.5 bg-[#6c5ce7] hover:bg-[#5b4cc4] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#6c5ce7]/25 flex items-center justify-center gap-2 cursor-pointer"
+                        disabled={setupLoading}
+                        id="btn-save-profile-setup"
+                      >
+                        {setupLoading ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        <span>{currentUser.profile_completed ? 'Save Changes' : 'Save & Enter Skill Hub →'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PAGE 3 — DISCOVER SKILLS & FIELDS */}
       {/* ========================================================================= */}
       {currentPage === 'discover' && (
         <div className="page" id="page-discover">
-          <div className="page-tag">PAGE 4 — DISCOVER</div>
+          <div className="page-tag">PAGE 3 — DISCOVER SKILLS &amp; FIELDS</div>
 
           <div className="content">
             
-            {/* ================================================================= */}
-            {/* DISCOVER VIEW: MAIN (EXPLORE OVERVIEW) */}
-            {/* ================================================================= */}
+            {/* Real Dynamic Hero Banner */}
+            <div className="hero-banner shadow-lg">
+              <div className="hero-text">
+                <h1>Level up your skills, {getMainName(currentUser.full_name)}.</h1>
+                <p>Pick a roadmap, challenge your limits, beat the deadline and earn points to rank #1 in your batch.</p>
+              </div>
+              <div className="hero-stats">
+                <div className="stat">
+                  <b>{currentUser.points}</b>
+                  <span>points</span>
+                </div>
+                <div className="stat">
+                  <b>{currentUser.current_streak}</b>
+                  <span>day streak</span>
+                </div>
+                <div className="stat">
+                  <b>{userBatchRank}</b>
+                  <span>in batch</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Challenge Banner in Discover (If user has an active challenge) */}
+            {activeProgress && activeProgress.status === 'in_progress' && (
+              <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#6c5ce7] to-[#8075ff] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-xl font-bold backdrop-blur-sm">
+                    {skills.find(s => s.id === activeProgress.skill_id)?.icon || '⚡'}
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-white/80">Active Timed Challenge</div>
+                    <div className="text-base font-bold">{skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}</div>
+                    <div className="text-xs text-white/90 flex items-center gap-2 mt-0.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>
+                        {timeRemaining.isExpired 
+                          ? 'Expired' 
+                          : `${timeRemaining.days}d ${timeRemaining.hours}h ${timeRemaining.minutes}m remaining`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button 
+                    onClick={() => setCurrentPage('dashboard')}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-white text-[#6c5ce7] text-xs font-bold rounded-xl hover:bg-white/95 transition-colors shadow-sm"
+                  >
+                    Go to Challenge →
+                  </button>
+                  <button
+                    onClick={handleCompleteActiveChallenge}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-[#00b894] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                  >
+                    Complete (+10 pts)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-view switcher for Discover */}
             {discoverView === 'main' && (
               <>
-                {/* Hero Banner */}
-                <div className="hero-banner">
-                  <div>
-                    <div style={{ fontSize: '13px', opacity: 0.85 }}>Welcome back</div>
-                    <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>
-                      {getMainName(currentUser.full_name)}, ready to level up?
-                    </div>
-                  </div>
-                  <div className="hero-stats">
-                    <div className="stat">
-                      <b>{currentUser.points}</b>
-                      <span>points</span>
-                    </div>
-                    <div className="stat">
-                      <b>{currentUser.current_streak}</b>
-                      <span>day streak</span>
-                    </div>
-                    <div className="stat">
-                      <b>#3</b>
-                      <span>in batch</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Incomplete profile warning reminder if skipped */}
-                {!currentUser.profile_completed && (
-                  <div className="mb-6 p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                      <div>
-                        <div className="text-xs font-bold text-amber-900">Your profile is incomplete</div>
-                        <div className="text-[11px] text-amber-700">Complete setup to unlock starting challenges and earn leaderboard points.</div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setCurrentPage('profile-setup')}
-                      className="w-full sm:w-auto px-3.5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors whitespace-nowrap text-center cursor-pointer"
-                    >
-                      Finish Setup →
-                    </button>
-                  </div>
-                )}
-
-                {/* Active Challenge Card (Rendered only when activeProgress is in_progress) */}
-                {activeProgress && activeProgress.status === 'in_progress' && (() => {
-                  const activeSkill = skills.find(s => s.id === activeProgress.skill_id) || skills[0];
-                  const steps = roadmapSteps[activeProgress.skill_id] || [];
-                  const completedStepCount = (activeProgress.steps_completed || []).length;
-                  const totalStepCount = steps.length;
-
-                  return (
-                    <div 
-                      className="mb-8 bg-gradient-to-br from-[#161828] via-[#222646] to-[#161828] text-white border-2 border-[#37f0ff]/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-3 duration-300"
-                      id="discover-active-challenge-card"
-                    >
-                      {/* Background decorative glow */}
-                      <div className="absolute top-0 right-0 w-80 h-80 bg-[#6c5ce7]/25 rounded-full blur-3xl pointer-events-none -mr-24 -mt-24"></div>
-                      <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#37f0ff]/20 rounded-full blur-3xl pointer-events-none -ml-24 -mb-24"></div>
-
-                      <div className="relative z-10 flex flex-col gap-6">
-                        {/* Header: Skill Name, Status Badge, and Points info */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <div 
-                              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-xl shrink-0 border-2 border-white/20"
-                              style={{ background: activeSkill.bg_color || '#6c5ce7' }}
-                            >
-                              {activeSkill.icon || activeSkill.name.slice(0, 2)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2.5 flex-wrap">
-                                <span className="text-xs font-black tracking-wider uppercase px-3 py-1 rounded-full bg-[#37f0ff]/20 text-[#37f0ff] border border-[#37f0ff]/50 shadow-xs">
-                                  Active Challenge
-                                </span>
-                                <span className="text-xs sm:text-sm text-amber-300 font-bold flex items-center gap-1.5 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-300/30">
-                                  <Trophy className="w-4 h-4" /> +10 pts on finish
-                                </span>
-                              </div>
-                              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1.5 leading-tight tracking-tight">
-                                {activeSkill.name} Challenge
-                              </h3>
-                            </div>
-                          </div>
-
-                          {/* Quick Add Time & Dashboard jump */}
-                          <div className="flex items-center gap-2.5 self-start sm:self-center">
-                            <button
-                              onClick={() => setIsAddTimeModalOpen(true)}
-                              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border border-white/20 hover:scale-102"
-                              id="btn-discover-add-time"
-                              title="Add more time"
-                            >
-                              <Plus className="w-4 h-4 text-[#37f0ff]" />
-                              Add Time
-                            </button>
-                            <button
-                              onClick={() => setCurrentPage('dashboard')}
-                              className="px-4 py-2.5 bg-[#6c5ce7] hover:bg-[#5b4bc4] text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg hover:scale-102"
-                              id="btn-discover-goto-dashboard"
-                            >
-                              Dashboard <ArrowRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Live Countdown & Progress Bar */}
-                        <div className="bg-black/40 border border-white/15 rounded-2xl p-5 sm:p-6 backdrop-blur-md flex flex-col gap-3.5">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-white/80">
-                              <Clock className="w-4 h-4 text-[#37f0ff]" /> Time Remaining
-                            </div>
-                            <div className="text-2xl sm:text-3xl font-mono font-black text-white tracking-wider">
-                              {timeRemaining.isExpired ? (
-                                <span className="text-red-400">Deadline reached!</span>
-                              ) : (
-                                `${timeRemaining.days}d ${String(timeRemaining.hours).padStart(2, '0')}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s left`
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Dynamic Progress Bar */}
-                          <div className="w-full bg-white/15 rounded-full h-3 overflow-hidden p-0.5">
-                            <div 
-                              className="bg-gradient-to-r from-[#37f0ff] via-[#806af5] to-[#6c5ce7] h-full rounded-full transition-all duration-1000 shadow-md"
-                              style={{ width: `${timeRemaining.percent}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between text-xs sm:text-sm text-white/70 font-semibold">
-                            <span>Elapsed: {timeRemaining.percent}%</span>
-                            <span>Completed: {completedStepCount}/{totalStepCount} milestones</span>
-                          </div>
-                        </div>
-
-                        {/* Roadmap Steps Checklist */}
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white/90">
-                              Roadmap Milestones &amp; Checklist
-                            </span>
-                            <span className="text-xs text-[#37f0ff] font-semibold">
-                              Click any step to mark complete
-                            </span>
-                          </div>
-
-                          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                            {steps.length > 0 ? (
-                              steps.map((st, idx) => {
-                                const isDone = (activeProgress.steps_completed || []).includes(st.step_order);
-                                return (
-                                  <div 
-                                    key={st.id}
-                                    onClick={() => handleToggleStep(st.step_order)}
-                                    className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border-2 ${
-                                      isDone 
-                                        ? 'bg-emerald-500/20 border-emerald-400/50 text-white font-bold shadow-sm' 
-                                        : 'bg-white/5 border-white/10 text-white/90 hover:bg-white/10 hover:border-white/20'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3.5 min-w-0 pr-3">
-                                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs shrink-0 font-black ${
-                                        isDone 
-                                          ? 'bg-emerald-400 text-[#1a1c2e] border-emerald-400 shadow-sm' 
-                                          : 'border-white/40 text-white/80'
-                                      }`}>
-                                        {isDone ? '✓' : idx + 1}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="text-sm sm:text-base font-bold text-white leading-snug truncate">
-                                          {st.title}
-                                        </div>
-                                        {st.description && (
-                                          <div className="text-xs sm:text-sm text-white/70 mt-0.5 line-clamp-1">
-                                            {st.description}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <span className={`text-xs font-black px-3 py-1 rounded-xl shrink-0 uppercase tracking-wider ${
-                                      isDone ? 'bg-emerald-400 text-[#1a1c2e] shadow-xs' : 'bg-white/10 text-white/70'
-                                    }`}>
-                                      {isDone ? 'Done' : 'Pending'}
-                                    </span>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <div className="text-sm text-white/60 italic py-2">No steps listed for this roadmap.</div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Bottom Actions: Cancel challenge and Mark complete */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/15">
-                          {/* Cancel Challenge Button */}
-                          <button
-                            type="button"
-                            onClick={() => setIsCancelModalOpen(true)}
-                            className="w-full sm:w-auto px-5 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-200 border-2 border-red-500/40 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-                            id="btn-cancel-challenge-discover"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                            Cancel challenge
-                          </button>
-
-                          {/* Complete Challenge Button */}
-                          <button
-                            type="button"
-                            onClick={handleCompleteActiveChallenge}
-                            className="w-full sm:w-auto px-7 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#e5a50a] via-[#d97706] to-[#b45309] hover:from-[#d97706] hover:to-[#92400e] text-[#161828] hover:text-white font-black rounded-2xl text-sm sm:text-base shadow-2xl shadow-amber-950/60 ring-4 ring-amber-400/40 border-2 border-amber-300 transition-all flex items-center justify-center gap-2.5 cursor-pointer hover:scale-103 active:scale-98"
-                            id="btn-complete-challenge-discover"
-                          >
-                            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-                            <span>Mark as Complete <span className="font-extrabold text-white bg-black/30 px-2 py-0.5 rounded-lg ml-1 text-xs sm:text-sm">(+10 pts)</span></span>
-                          </button>
-                        </div>
-
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* How do you want to explore? */}
-                <div className="section-title">How do you want to explore?</div>
-                <div className="choice-grid">
-                  
-                  {/* Choice 1: Browse by field */}
+                {/* 2 Main Choice Cards: Browse by Field & Browse by Skill */}
+                <div className="choice-grid" id="discover-choice-grid">
                   <div 
-                    className="choice-card c1 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
-                    onClick={() => {
-                      setDiscoverView('fields');
-                    }}
-                    id="card-choice-field"
+                    className="choice-card c1 cursor-pointer"
+                    onClick={() => setDiscoverView('fields')}
+                    id="card-browse-by-field"
                   >
-                    <div className="icon-badge">💼</div>
-                    <h3>Browse by field</h3>
-                    <p>Web Development, Cyber Security, Software Engineering and more</p>
+                    <div className="icon-badge">🧭</div>
+                    <h3>Browse by Field</h3>
+                    <p>Explore roadmap tracks organized by software fields — Web, AI, DevOps, Mobile &amp; more.</p>
                   </div>
 
-                  {/* Choice 2: Browse by skill */}
                   <div 
-                    className="choice-card c2 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
-                    onClick={() => {
-                      setDiscoverView('all-skills');
-                    }}
-                    id="card-choice-skill"
+                    className="choice-card c2 cursor-pointer"
+                    onClick={() => setDiscoverView('all-skills')}
+                    id="card-browse-by-skill"
                   >
                     <div className="icon-badge">⚡</div>
-                    <h3>Browse by skill</h3>
-                    <p>Pick a single skill like HTML, C, or Python and start today</p>
+                    <h3>Browse by Skill</h3>
+                    <p>Pick a specific technology roadmap like React, Node.js, Python, Flutter &amp; more.</p>
                   </div>
                 </div>
 
-                {/* Popular this week Section (Unchanged, no pill filters above) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-1">
-                  <div className="section-title mb-0">Popular this week</div>
-                  <span className="text-xs text-[#8a8ca3] font-medium">Click any skill to view roadmap</span>
+                {/* Search Bar (Line 1) */}
+                <div className="search-wrapper w-full mb-3">
+                  <span className="search-icon-inside">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input 
+                    type="text" 
+                    placeholder="Search skills (HTML, React, Python, C++, Docker)..."
+                    className="search-input-field"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    id="input-search-skills"
+                  />
                 </div>
 
-                <div className="skill-grid">
-                  {popularSkills.map((skill) => (
-                    <div 
-                      key={skill.id}
-                      className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
-                      onClick={() => {
-                        setSelectedSkillId(skill.id);
-                        setCurrentPage('roadmap');
-                      }}
-                      id={`skill-card-${skill.id}`}
+                {/* Category / Fields Filter Row (Line 2) */}
+                <div className="flex items-center gap-2 mb-2.5 overflow-hidden">
+                  <div className="filter-pills-row flex-1">
+                    <button 
+                      onClick={() => setFieldFilter(null)}
+                      className={`filter-pill-btn ${!fieldFilter ? 'active' : 'inactive'}`}
+                      id="pill-filter-all-fields"
                     >
-                      <div>
-                        <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
-                          {skill.icon || skill.name.slice(0, 2)}
+                      All Fields
+                    </button>
+                    {fields.map(f => (
+                      <button 
+                        key={f.id}
+                        onClick={() => setFieldFilter(f.id === fieldFilter ? null : f.id)}
+                        className={`filter-pill-btn ${fieldFilter === f.id ? 'active-accent' : 'inactive'}`}
+                        id={`pill-filter-${f.id}`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                    <button 
+                      onClick={() => setDiscoverView('fields')}
+                      className="filter-pill-link"
+                      id="btn-view-all-fields-link"
+                    >
+                      View all fields →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Skills Row with All Skills option (Line 3) */}
+                <div className="flex items-center gap-2 mb-6 overflow-hidden">
+                  <div className="filter-pills-row flex-1">
+                    <button 
+                      onClick={() => setSkillFilter(null)}
+                      className={`filter-pill-btn ${!skillFilter ? 'active-accent' : 'inactive'} flex items-center gap-1.5`}
+                      id="pill-all-skills-option"
+                    >
+                      <span>⚡ All Skills</span>
+                    </button>
+                    {skills.slice(0, 10).map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSkillFilter(skillFilter === s.id ? null : s.id)}
+                        className={`filter-pill-btn ${skillFilter === s.id ? 'active-accent' : 'inactive'} flex items-center gap-1.5`}
+                        id={`pill-quick-skill-${s.id}`}
+                      >
+                        <span>{s.icon}</span>
+                        <span>{s.name}</span>
+                      </button>
+                    ))}
+                    <button 
+                      onClick={() => setDiscoverView('all-skills')}
+                      className="filter-pill-link"
+                      id="btn-view-all-skills-link"
+                    >
+                      Explore all {skills.length} skills →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popular Skill Tracks Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="section-title" style={{ margin: 0 }}>
+                    {skillFilter 
+                      ? `Selected Skill: ${skills.find(s => s.id === skillFilter)?.name || ''}` 
+                      : fieldFilter 
+                        ? `${fields.find(f => f.id === fieldFilter)?.name || ''} Roadmaps`
+                        : 'Popular Roadmap Tracks'}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {(skillFilter || fieldFilter || searchQuery) && (
+                      <button
+                        onClick={() => {
+                          setSkillFilter(null);
+                          setFieldFilter(null);
+                          setSearchQuery('');
+                        }}
+                        className="text-xs text-[#e84393] font-bold cursor-pointer hover:underline"
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                    <span 
+                      onClick={() => setDiscoverView('all-skills')}
+                      className="text-xs text-[#6c5ce7] font-bold cursor-pointer hover:underline"
+                    >
+                      View all {skills.length} skills →
+                    </span>
+                  </div>
+                </div>
+
+                <div className="skills-grid">
+                  {skills
+                    .filter(s => !fieldFilter || s.field_id === fieldFilter)
+                    .filter(s => !skillFilter || s.id === skillFilter)
+                    .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((s) => {
+                      const isActive = activeProgress?.skill_id === s.id && activeProgress?.status === 'in_progress';
+                      return (
+                        <div 
+                          key={s.id} 
+                          className="skill-card group hover:shadow-md transition-all cursor-pointer"
+                          onClick={() => {
+                            setSelectedSkillId(s.id);
+                            setCurrentPage('roadmap');
+                          }}
+                          id={`skill-card-${s.id}`}
+                        >
+                          <div className="icon" style={{ background: s.bg_color || '#6c5ce7' }}>
+                            {s.icon}
+                          </div>
+                          <h4>{s.name}</h4>
+                          <p>{s.description}</p>
+                          <div className="meta">
+                            <span className="diff">{s.difficulty || 'Beginner'}</span>
+                            <span className="learners">
+                              {isActive ? '⚡ In progress' : `⏱ ${s.avg_days || '3 days'}`}
+                            </span>
+                          </div>
                         </div>
-                        <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
-                        <p className="line-clamp-2 mb-2">{skill.description}</p>
+                      );
+                    })}
+                </div>
+
+                {/* Category Exploration Banner */}
+                <div className="mt-10 mb-4 section-title">Explore by Domain</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {fields.map(f => (
+                    <div 
+                      key={f.id}
+                      onClick={() => {
+                        setSelectedFieldId(f.id);
+                        setDiscoverView('field-skills');
+                      }}
+                      className="p-5 rounded-2xl bg-white border border-[#e4e5ee] hover:border-[#6c5ce7] transition-all cursor-pointer shadow-xs hover:shadow-md flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <span className="text-2xl">{f.icon}</span>
+                        <div>
+                          <div className="font-bold text-sm text-[#1a1c2e]">{f.name}</div>
+                          <div className="text-xs text-[#8a8ca3]">{skills.filter(s => s.field_id === f.id).length} Roadmaps</div>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
-                        <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
-                        <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-[#8a8ca3]" />
                     </div>
                   ))}
                 </div>
               </>
             )}
 
-            {/* ================================================================= */}
-            {/* DISCOVER VIEW: BROWSE BY FIELD — STEP 1 (ALL FIELDS GRID) */}
-            {/* ================================================================= */}
+            {/* Sub-view: All Fields */}
             {discoverView === 'fields' && (
               <div>
-                {/* Back to Discover link */}
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-                  <button 
-                    onClick={() => setDiscoverView('main')}
-                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
-                    id="btn-back-to-discover-from-fields"
+                <button 
+                  onClick={() => setDiscoverView('main')}
+                  className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1 transition-colors"
+                >
+                  ← Back to Discover
+                </button>
+                <div className="section-title">All Engineering Disciplines</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {fields.map(f => (
+                    <div 
+                      key={f.id}
+                      onClick={() => {
+                        setSelectedFieldId(f.id);
+                        setDiscoverView('field-skills');
+                      }}
+                      className="p-5 rounded-2xl bg-white border border-[#e4e5ee] hover:border-[#6c5ce7] transition-all cursor-pointer shadow-xs hover:shadow-md"
+                    >
+                      <span className="text-3xl block mb-2">{f.icon}</span>
+                      <div className="font-bold text-base text-[#1a1c2e] mb-1">{f.name}</div>
+                      <div className="text-xs text-[#8a8ca3] mb-3">{f.description}</div>
+                      <div className="text-xs font-bold text-[#6c5ce7] flex items-center gap-1">
+                        View {skills.filter(s => s.field_id === f.id).length} Tracks <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-view: Skills in Selected Field */}
+            {discoverView === 'field-skills' && (
+              <div>
+                <button 
+                  onClick={() => setDiscoverView('fields')}
+                  className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1 transition-colors"
+                >
+                  ← Back to Disciplines
+                </button>
+                <div className="section-title">
+                  {fields.find(f => f.id === selectedFieldId)?.name || 'Field'} Roadmaps
+                </div>
+                <div className="skills-grid">
+                  {skills.filter(s => s.field_id === selectedFieldId).map(s => (
+                    <div 
+                      key={s.id}
+                      className="skill-card cursor-pointer hover:shadow-md transition-all"
+                      onClick={() => {
+                        setSelectedSkillId(s.id);
+                        setCurrentPage('roadmap');
+                      }}
+                    >
+                      <div className="icon" style={{ background: s.bg_color || '#6c5ce7' }}>
+                        {s.icon}
+                      </div>
+                      <h4>{s.name}</h4>
+                      <p>{s.description}</p>
+                      <div className="meta">
+                        <span className="diff">{s.difficulty || 'Beginner'}</span>
+                        <span className="learners">⏱ {s.avg_days || '3 days'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-view: All Skills */}
+            {discoverView === 'all-skills' && (
+              <div>
+                <button 
+                  onClick={() => setDiscoverView('main')}
+                  className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1 transition-colors"
+                >
+                  ← Back to Discover
+                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
+                  <div className="section-title" style={{ margin: 0 }}>All Available Roadmap Tracks ({skills.length})</div>
+                  <div className="search-wrapper max-w-sm">
+                    <span className="search-icon-inside">
+                      <Search className="w-4 h-4" />
+                    </span>
+                    <input 
+                      type="text" 
+                      placeholder="Filter all roadmaps..."
+                      className="search-input-field"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="skills-grid">
+                  {skills
+                    .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map(s => (
+                    <div 
+                      key={s.id}
+                      className="skill-card cursor-pointer hover:shadow-md transition-all"
+                      onClick={() => {
+                        setSelectedSkillId(s.id);
+                        setCurrentPage('roadmap');
+                      }}
+                    >
+                      <div className="icon" style={{ background: s.bg_color || '#6c5ce7' }}>
+                        {s.icon}
+                      </div>
+                      <h4>{s.name}</h4>
+                      <p>{s.description}</p>
+                      <div className="meta">
+                        <span className="diff">{s.difficulty || 'Beginner'}</span>
+                        <span className="learners">⏱ {s.avg_days || '3 days'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PAGE 4 & 5 — ROADMAP STEPS & OVERVIEW */}
+      {/* ========================================================================= */}
+      {currentPage === 'roadmap' && (
+        <div className="page" id="page-roadmap">
+          <div className="page-tag">PAGE 4 &amp; 5 — ROADMAP STEPS &amp; OVERVIEW</div>
+
+          <div className="content">
+            
+            <div className="flex items-center justify-between mb-5">
+              <button 
+                onClick={() => setCurrentPage('discover')}
+                className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors bg-white px-4 py-2.5 rounded-xl border border-[#e4e5ee] hover:border-[#6c5ce7] shadow-2xs"
+                id="btn-back-to-discover"
+              >
+                ← Back to Discover &amp; Roadmaps
+              </button>
+              <div className="text-xs text-[#8a8ca3] font-medium hidden sm:block">
+                Skill Track: <span className="font-bold text-[#1a1c2e]">{currentSkill.name}</span> ({currentSkillSteps.length} milestones)
+              </div>
+            </div>
+
+            <div className="w-full max-w-4xl mx-auto">
+              
+              {/* Header info */}
+              <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#e4e5ee] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xs">
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="w-14 h-14 min-w-14 rounded-2xl text-white font-extrabold flex items-center justify-center text-xl shadow-md"
+                    style={{ background: currentSkill.bg_color || '#6c5ce7' }}
                   >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                    Back to Discover
-                  </button>
-                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
-                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
-                    <span>/</span>
-                    <span className="font-bold text-[#1a1c2e]">Browse by Field</span>
+                    {currentSkill.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-2xl text-[#1a1c2e] leading-tight">{currentSkill.name}</h3>
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7]">
+                        {currentSkill.difficulty || 'Beginner'}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#8a8ca3] max-w-xl leading-relaxed">{currentSkill.description}</p>
                   </div>
                 </div>
 
-                {/* View Header */}
-                <div className="mb-6">
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-[#1a1c2e] tracking-tight">Browse by Field</h2>
-                  <p className="text-xs sm:text-sm text-[#8a8ca3] mt-1">
-                    Select an engineering field to view all specialized learning tracks and roadmaps.
-                  </p>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {activeProgress?.skill_id === currentSkill.id && activeProgress?.status === 'in_progress' ? (
+                    <button 
+                      onClick={() => setCurrentPage('dashboard')}
+                      className="btn-challenge-active w-full sm:w-auto"
+                      id="btn-active-challenge-dashboard"
+                    >
+                      <Zap className="w-5 h-5 fill-white" />
+                      <span>⚡ Active Challenge (Go to Dashboard)</span>
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setIsDeadlineModalOpen(true)}
+                      className="btn-challenge-cta w-full sm:w-auto"
+                      id="btn-start-challenge-roadmap"
+                    >
+                      <Zap className="w-5 h-5 fill-white" />
+                      <span>Start Timed Challenge</span>
+                      <ArrowRight className="w-5 h-5 ml-1" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Steps List */}
+              <div className="flex items-center justify-between mb-4 px-1">
+                <div className="section-title" style={{ margin: 0 }}>Roadmap Curriculum &amp; Milestones</div>
+                <span className="text-xs text-[#8a8ca3] font-semibold">{currentSkillSteps.length} Steps to Complete</span>
+              </div>
+
+              {currentSkillSteps.length === 0 ? (
+                <div className="bg-white rounded-2xl p-10 text-center text-[#8a8ca3] text-xs border border-[#e4e5ee]">
+                  No roadmap steps listed yet for this skill track.
+                </div>
+              ) : (
+                currentSkillSteps.map((st, idx) => (
+                  <div key={st.id} className="step-card" id={`step-card-${st.id}`}>
+                    <div className="step-num">{idx + 1}</div>
+                    <div className="step-body">
+                      <h5>{st.title}</h5>
+                      <p>{st.description}</p>
+                      {st.resource_link && (
+                        <a 
+                          href={st.resource_link} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="resource-link inline-flex items-center gap-1.5 text-xs font-bold text-[#6c5ce7] hover:underline mt-2.5"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          Official Documentation &amp; Reference <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PAGE 6 — DASHBOARD / ACTIVE CHALLENGE */}
+      {/* ========================================================================= */}
+      {currentPage === 'dashboard' && (
+        <div className="page" id="page-dashboard">
+          <div className="page-tag">PAGE 6 — DASHBOARD / ACTIVE CHALLENGE</div>
+
+          <div className="content">
+            
+            {/* Real Stats Mini Grid */}
+            <div className="stat-mini-grid">
+              <div className="stat-mini">
+                <div className="val">{currentUser.points}</div>
+                <div className="lbl">total points</div>
+              </div>
+              <div className="stat-mini">
+                <div className="val">{currentUser.current_streak} days</div>
+                <div className="lbl">current streak</div>
+              </div>
+              <div className="stat-mini">
+                <div className="val">
+                  {allCompletedProgress.filter(cp => cp.user_id === currentUser.id).length}
+                </div>
+                <div className="lbl">skills completed</div>
+              </div>
+              <div className="stat-mini">
+                <div className="val">{userBatchRank}</div>
+                <div className="lbl">batch rank</div>
+              </div>
+            </div>
+
+            {/* Active Challenge Card */}
+            {activeProgress && activeProgress.status === 'in_progress' ? (
+              <div className="active-card shadow-sm border border-[#e4e5ee]" id="dashboard-active-challenge-card">
+                
+                {/* Header info */}
+                <div className="active-card-top pb-4 border-b border-[#f0f1f7]">
+                  <div className="active-card-title">
+                    <span 
+                      className="w-12 h-12 rounded-2xl text-white font-extrabold flex items-center justify-center text-lg shadow-md"
+                      style={{ background: skills.find(s => s.id === activeProgress.skill_id)?.bg_color || '#6c5ce7' }}
+                    >
+                      {skills.find(s => s.id === activeProgress.skill_id)?.icon || '⚡'}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4>{skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}</h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7]">
+                          Challenge
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8a8ca3] mt-0.5">
+                        Finish all checkpoints before the deadline to earn points &amp; streak!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="active-badge">
+                    <span className="w-2 h-2 rounded-full bg-[#00b894] animate-pulse"></span>
+                    <span>LIVE CHALLENGE</span>
+                  </div>
                 </div>
 
-                {/* All Fields as Large Cards (Matching Popular Skill Cards Style) */}
-                <div className="skill-grid">
-                  {fields.map((field) => {
-                    const fieldSkills = skills.filter(s => s.field_id === field.id);
+                {/* Real Live Countdown Timer */}
+                <div className="my-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-[#8a8ca3] uppercase tracking-wider">Time Remaining:</span>
+                    <span className="text-xs font-bold text-[#6c5ce7]">{timeRemaining.percent}% time left</span>
+                  </div>
+                  
+                  <div className="countdown-grid">
+                    <div className="count-unit">
+                      <b>{String(timeRemaining.days).padStart(2, '0')}</b>
+                      <span>Days</span>
+                    </div>
+                    <div className="count-unit">
+                      <b>{String(timeRemaining.hours).padStart(2, '0')}</b>
+                      <span>Hours</span>
+                    </div>
+                    <div className="count-unit">
+                      <b>{String(timeRemaining.minutes).padStart(2, '0')}</b>
+                      <span>Mins</span>
+                    </div>
+                    <div className="count-unit">
+                      <b>{String(timeRemaining.seconds).padStart(2, '0')}</b>
+                      <span>Secs</span>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-[#f0f1f7] h-2.5 rounded-full overflow-hidden border border-[#e4e5ee] mt-3">
+                    <div 
+                      className="bg-linear-to-r from-[#6c5ce7] to-[#a29bfe] h-full rounded-full transition-all duration-1000"
+                      style={{ width: `${timeRemaining.percent}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Steps Checklist */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="section-title" style={{ fontSize: '13px', margin: 0 }}>
+                      Roadmap Checkpoints
+                    </div>
+                    <span className="text-xs text-[#8a8ca3] font-semibold">
+                      {(activeProgress.steps_completed || []).length} / {(roadmapSteps[activeProgress.skill_id] || []).length} Completed
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {(roadmapSteps[activeProgress.skill_id] || []).map((step, idx) => {
+                      const isChecked = (activeProgress.steps_completed || []).includes(step.step_order);
+                      return (
+                        <div 
+                          key={step.id}
+                          onClick={() => handleToggleStep(step.step_order)}
+                          className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${isChecked ? 'bg-[#00b894]/8 border-[#00b894]/30 shadow-2xs' : 'bg-white border-[#e4e5ee] hover:border-[#6c5ce7] hover:bg-[#fafbff]'}`}
+                        >
+                          <div className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-extrabold transition-all ${isChecked ? 'bg-[#00b894] text-white shadow-xs' : 'border-2 border-[#c8cad6] text-transparent'}`}>
+                            ✓
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-xs font-bold ${isChecked ? 'text-[#00b894] line-through' : 'text-[#1a1c2e]'}`}>
+                              {idx + 1}. {step.title}
+                            </div>
+                            {step.description && (
+                              <div className="text-[11px] text-[#8a8ca3] truncate mt-0.5">
+                                {step.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Challenge Action Controls */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-5 border-t border-[#f0f1f7]">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button 
+                      onClick={handleCompleteActiveChallenge}
+                      className="px-6 py-3 bg-[#00b894] hover:bg-[#00a383] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#00b894]/25 flex items-center justify-center gap-2"
+                      id="btn-complete-challenge"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Complete Challenge (+10 pts)</span>
+                    </button>
+
+                    <button 
+                      onClick={() => setIsAddTimeModalOpen(true)}
+                      className="px-4 py-3 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      id="btn-add-extra-time"
+                    >
+                      <Clock className="w-4 h-4 text-[#6c5ce7]" />
+                      <span>Add Extra Time</span>
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="px-4 py-2.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 text-xs font-bold rounded-xl transition-colors text-center sm:text-right"
+                    id="btn-cancel-challenge"
+                  >
+                    Cancel Challenge
+                  </button>
+                </div>
+
+              </div>
+            ) : (
+              <div className="bg-white border border-[#e4e5ee] rounded-2xl p-8 mb-8 text-center shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-[#6c5ce7]/10 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
+                  <Flame className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-base text-[#1a1c2e] mb-1">No Active Timed Challenge</h4>
+                <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mb-4">
+                  Select a skill track from the discover roadmaps and set your custom sprint deadline to earn +10 points.
+                </p>
+                <button 
+                  onClick={() => setCurrentPage('discover')}
+                  className="px-5 py-2.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-[#6c5ce7]/20"
+                >
+                  Pick a Skill to Learn →
+                </button>
+              </div>
+            )}
+
+            {/* Badges & History Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Left: Badges Unlocked */}
+              <div>
+                <div className="section-title">Milestones &amp; Badges</div>
+                <div className="badge-grid">
+                  {badges.map((badge) => {
+                    const isUnlocked = userBadgeIds.includes(badge.id);
+
                     return (
                       <div 
-                        key={field.id}
-                        className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
-                        onClick={() => {
-                          setSelectedFieldId(field.id);
-                          setDiscoverView('field-skills');
-                        }}
-                        id={`field-card-${field.id}`}
+                        key={badge.id}
+                        className={`badge-item ${isUnlocked ? '' : 'badge-locked'}`}
                       >
-                        <div>
-                          <div className="icon shadow-sm" style={{ background: field.color || '#6c5ce7' }}>
-                            {field.icon}
-                          </div>
-                          <h4 className="group-hover:text-[#6c5ce7] transition-colors flex items-center justify-between">
-                            <span>{field.name}</span>
-                            <ChevronRight className="w-3.5 h-3.5 text-[#8a8ca3] group-hover:text-[#6c5ce7] group-hover:translate-x-0.5 transition-all opacity-0 group-hover:opacity-100" />
-                          </h4>
-                          <p className="line-clamp-2 mb-3">{field.description}</p>
+                        <div 
+                          className="badge-circle" 
+                          style={{ background: isUnlocked ? (badge.bg_color || '#6c5ce7') : '#b2bec3' }}
+                        >
+                          {isUnlocked ? (badge.icon_symbol || '★') : '🔒'}
                         </div>
-                        <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
-                          <span className="text-[#6c5ce7] font-bold bg-[#f1eefe] px-2 py-0.5 rounded-full">
-                            {fieldSkills.length} {fieldSkills.length === 1 ? 'skill' : 'skills'}
-                          </span>
-                          <span className="group-hover:text-[#1a1c2e] transition-colors">Explore track →</span>
+                        <div>
+                          <h5>{badge.name}</h5>
+                          <p>{badge.description}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
 
-            {/* ================================================================= */}
-            {/* DISCOVER VIEW: BROWSE BY FIELD — STEP 2 (SKILLS WITHIN SELECTED FIELD) */}
-            {/* ================================================================= */}
-            {discoverView === 'field-skills' && (
+              {/* Right: Completed Skills History */}
               <div>
-                {/* Back to fields Breadcrumb & Button */}
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-                  <button 
-                    onClick={() => setDiscoverView('fields')}
-                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
-                    id="btn-back-to-fields"
-                  >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                    Back to fields
-                  </button>
-                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
-                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
-                    <span>/</span>
-                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('fields')}>Fields</span>
-                    <span>/</span>
-                    <span className="font-bold text-[#1a1c2e]">{selectedField?.name}</span>
-                  </div>
-                </div>
-
-                {/* Field Overview Banner */}
-                <div className="hero-banner mb-6" style={{ background: selectedField?.color ? `linear-gradient(120deg, ${selectedField.color}, #a29bfe)` : undefined }}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                      {selectedField?.icon}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, fontWeight: 700 }}>Domain Track</div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '2px' }}>{selectedField?.name}</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9, marginTop: '2px' }}>{selectedField?.description}</div>
-                    </div>
-                  </div>
-                  <div className="hero-stats">
-                    <div className="stat">
-                      <b>{skillsInSelectedField.length}</b>
-                      <span>roadmaps</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section title */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-1">
-                  <div className="section-title mb-0">Skills in {selectedField?.name}</div>
-                  <span className="text-xs text-[#8a8ca3] font-medium">Click any skill to view roadmap</span>
-                </div>
-
-                {/* Large Card Grid of Skills in this Field */}
-                {skillsInSelectedField.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-8 text-center border border-[#e4e5ee] shadow-sm">
-                    <div className="text-3xl mb-2">📚</div>
-                    <div className="font-bold text-sm text-[#1a1c2e]">No roadmaps yet in this field</div>
-                    <div className="text-xs text-[#8a8ca3] mt-1">Admin will publish new skill tracks soon.</div>
-                  </div>
-                ) : (
-                  <div className="skill-grid">
-                    {skillsInSelectedField.map((skill) => (
-                      <div 
-                        key={skill.id}
-                        className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
-                        onClick={() => {
-                          setSelectedSkillId(skill.id);
-                          setCurrentPage('roadmap');
-                        }}
-                        id={`skill-card-field-${skill.id}`}
-                      >
-                        <div>
-                          <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
-                            {skill.icon || skill.name.slice(0, 2)}
-                          </div>
-                          <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
-                          <p className="line-clamp-2 mb-2">{skill.description}</p>
-                        </div>
-                        <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
-                          <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
-                          <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ================================================================= */}
-            {/* DISCOVER VIEW: BROWSE BY SKILL (ALL INDIVIDUAL SKILLS GRID) */}
-            {/* ================================================================= */}
-            {discoverView === 'all-skills' && (
-              <div>
-                {/* Back to Discover Breadcrumb & Button */}
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-                  <button 
-                    onClick={() => setDiscoverView('main')}
-                    className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors group cursor-pointer"
-                    id="btn-back-to-discover-from-skills"
-                  >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                    Back to Discover
-                  </button>
-                  <div className="text-xs font-medium text-[#8a8ca3] flex items-center gap-1.5">
-                    <span className="hover:underline cursor-pointer" onClick={() => setDiscoverView('main')}>Discover</span>
-                    <span>/</span>
-                    <span className="font-bold text-[#1a1c2e]">Browse by Skill</span>
-                  </div>
-                </div>
-
-                {/* View Header & Real-time Search */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#1a1c2e] tracking-tight">Browse by Skill</h2>
-                    <p className="text-xs sm:text-sm text-[#8a8ca3] mt-0.5">
-                      Explore all {skills.length} individual skills across all fields. Select any skill to view its roadmap.
-                    </p>
-                  </div>
-                  {/* Search Bar */}
-                  <div className="relative min-w-[240px] max-w-sm w-full sm:w-auto">
-                    <Search className="w-4 h-4 text-[#8a8ca3] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input 
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search skills (e.g. React, C, Python)..."
-                      className="w-full pl-9 pr-4 py-2 bg-white border border-[#e4e5ee] rounded-xl text-xs text-[#1a1c2e] focus:outline-none focus:border-[#6c5ce7] shadow-sm transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* All Individual Skills Grid */}
-                {allSearchedSkills.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-8 text-center border border-[#e4e5ee] shadow-sm">
-                    <div className="text-3xl mb-2">🔍</div>
-                    <div className="font-bold text-sm text-[#1a1c2e]">No skills match "{searchQuery}"</div>
-                    <div className="text-xs text-[#8a8ca3] mt-1">Try searching for something else or clear the search.</div>
-                    <button 
-                      onClick={() => setSearchQuery('')}
-                      className="mt-3 px-4 py-1.5 bg-[#6c5ce7] text-white rounded-lg text-xs font-bold hover:bg-[#5b4cc4] transition-colors cursor-pointer"
-                    >
-                      Clear search
-                    </button>
-                  </div>
-                ) : (
-                  <div className="skill-grid">
-                    {allSearchedSkills.map((skill) => {
-                      const fieldOfSkill = fields.find(f => f.id === skill.field_id);
+                <div className="section-title">Completed Skills History</div>
+                {allCompletedProgress.filter(cp => cp.user_id === currentUser.id).length > 0 ? (
+                  allCompletedProgress
+                    .filter(cp => cp.user_id === currentUser.id)
+                    .map((cs) => {
+                      const sk = skills.find(s => s.id === cs.skill_id) || { name: 'Skill', icon: 'S', bg_color: '#6c5ce7' };
                       return (
-                        <div 
-                          key={skill.id}
-                          className="skill-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group border border-transparent hover:border-[#6c5ce7]/30 flex flex-col justify-between"
-                          onClick={() => {
-                            setSelectedSkillId(skill.id);
-                            setCurrentPage('roadmap');
-                          }}
-                          id={`skill-card-all-${skill.id}`}
-                        >
-                          <div>
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="icon" style={{ background: skill.bg_color || '#6c5ce7' }}>
-                                {skill.icon || skill.name.slice(0, 2)}
-                              </div>
-                              {fieldOfSkill && (
-                                <span className="text-[10px] font-bold text-[#6c5ce7] bg-[#f1eefe] px-2 py-0.5 rounded-full truncate max-w-[120px]">
-                                  {fieldOfSkill.name}
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="group-hover:text-[#6c5ce7] transition-colors">{skill.name}</h4>
-                            <p className="line-clamp-2 mb-2">{skill.description}</p>
+                        <div key={cs.id} className="completed-skill-card">
+                          <div className="icon" style={{ background: sk.bg_color || '#e84393' }}>
+                            {sk.icon || 'S'}
                           </div>
-                          <div className="text-[11px] text-[#8a8ca3] pt-2 border-t border-[#f0f1f6] flex items-center justify-between font-medium">
-                            <span>{roadmapSteps[skill.id]?.length || skill.step_count || 3} steps</span>
-                            <span className="text-[#6c5ce7] font-semibold">{skill.learner_count || 24} learners</span>
+                          <div className="info">
+                            <h5>{sk.name}</h5>
+                            <p>Finished on time (+10 pts)</p>
                           </div>
+                          <div className="time-badge">Completed</div>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* PAGE 5 — ROADMAP */}
-      {/* ========================================================================= */}
-      {currentPage === 'roadmap' && (
-        <div className="page" id="page-roadmap">
-          <div className="page-tag">PAGE 5 — ROADMAP</div>
-
-          <div className="content">
-            
-            {/* Back button */}
-            <button 
-              onClick={() => setCurrentPage('discover')}
-              className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1.5 transition-colors cursor-pointer group"
-              id="btn-roadmap-back"
-            >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              {discoverView === 'field-skills' && selectedField 
-                ? `Back to ${selectedField.name} Roadmaps` 
-                : discoverView === 'all-skills'
-                ? 'Back to All Skills'
-                : 'Back to Discover'}
-            </button>
-
-            {/* Roadmap Header */}
-            <div className="roadmap-head">
-              <div 
-                className="roadmap-icon shadow-md"
-                style={{ background: currentSkill.bg_color || 'linear-gradient(135deg,#6c5ce7,#a29bfe)' }}
-              >
-                {currentSkill.icon || currentSkill.name.slice(0, 2)}
-              </div>
-              <div>
-                <div className="roadmap-title">{currentSkill.name} roadmap</div>
-                <div className="roadmap-meta">
-                  {currentSkillSteps.length} steps · {currentSkill.difficulty || 'beginner friendly'} · avg. completion {currentSkill.avg_days || '2 days'}
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="timeline">
-              {currentSkillSteps.map((step, idx) => {
-                const isLast = idx === currentSkillSteps.length - 1;
-                return (
-                  <div key={step.id} className="tl-step">
-                    <div className="tl-marker-col">
-                      <div className="tl-num">{step.step_order || idx + 1}</div>
-                      {!isLast && <div className="tl-line"></div>}
-                    </div>
-                    <div className="tl-body">
-                      <h4>{step.title}</h4>
-                      <p>{step.description}</p>
-                      {step.resource_link && (
-                        <a 
-                          href={step.resource_link} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-[#6c5ce7] font-semibold mt-1.5 hover:underline"
-                        >
-                          Official Docs / Study Guide <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              <div 
-                className="start-btn cursor-pointer hover:opacity-95 hover:shadow-lg transition-all select-none inline-flex items-center gap-2"
-                onClick={() => {
-                  if (!currentUser.profile_completed) {
-                    showToast('Please complete your profile setup before starting a skill challenge!');
-                    setCurrentPage('profile-setup');
-                    return;
-                  }
-                  if (activeProgress && activeProgress.status === 'in_progress') {
-                    showToast('You already have an active challenge. Finish or wait for it to expire before starting another.');
-                    setCurrentPage('dashboard');
-                    return;
-                  }
-                  setIsDeadlineModalOpen(true);
-                }}
-                id="btn-start-skill-roadmap"
-              >
-                Start this skill →
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* PAGE 6 — DASHBOARD */}
-      {/* ========================================================================= */}
-      {currentPage === 'dashboard' && (
-        <div className="page" id="page-dashboard">
-          <div className="page-tag">PAGE 6 — DASHBOARD</div>
-
-          <div className="content">
-            <div className="dash-grid">
-              
-              {/* Left Column: Active Challenge & Stats */}
-              <div>
-                
-                {/* Active Challenge Card */}
-                {activeProgress && activeProgress.status === 'in_progress' ? (
-                  <div className="bg-gradient-to-br from-[#fdcb6e] via-[#f39c12] to-[#e17055] text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden flex flex-col gap-5">
-                    {/* Header */}
-                    <div className="flex justify-between items-start gap-3">
-                      <div>
-                        <div className="text-xl sm:text-2xl font-black text-white leading-tight">
-                          {(skills.find(s => s.id === activeProgress.skill_id)?.name || 'HTML')} Challenge
-                        </div>
-                        <div className="text-xs sm:text-sm text-white/90 font-medium mt-1">
-                          Started recently · Target: <b className="text-white font-extrabold">+10 points</b>
-                        </div>
-                      </div>
-                      <div className="bg-white/30 backdrop-blur-sm px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/40 shadow-xs">
-                        In progress
-                      </div>
-                    </div>
-
-                    {/* Live countdown */}
-                    <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20">
-                      <div className="text-xs font-bold uppercase tracking-wider text-white/80 mb-1 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> Time Remaining
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-black font-mono tracking-wide text-white">
-                        {timeRemaining.isExpired ? (
-                          <span className="text-red-200">Deadline reached!</span>
-                        ) : (
-                          `${timeRemaining.days}d ${String(timeRemaining.hours).padStart(2, '0')}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s left`
-                        )}
-                      </div>
-
-                      {/* Dynamic progress bar */}
-                      <div className="w-full bg-black/20 rounded-full h-2.5 overflow-hidden mt-3 p-0.5">
-                        <div 
-                          className="bg-white h-full rounded-full transition-all duration-1000 shadow-sm" 
-                          style={{ width: `${timeRemaining.percent}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-white/80 font-semibold mt-1.5">
-                        <span>Elapsed: {timeRemaining.percent}%</span>
-                        <span>Milestones: {(activeProgress.steps_completed || []).length}/{(roadmapSteps[activeProgress.skill_id] || []).length}</span>
-                      </div>
-                    </div>
-
-                    {/* Interactive Step Checklist */}
-                    <div className="flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs sm:text-sm font-black uppercase tracking-wider text-white/90">
-                          Milestone Checklist
-                        </div>
-                        <div className="text-xs text-white/80 font-medium">
-                          Click step to toggle
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                        {(roadmapSteps[activeProgress.skill_id] || []).map((st, i) => {
-                          const isDone = (activeProgress.steps_completed || []).includes(st.step_order);
-                          return (
-                            <div 
-                              key={st.id}
-                              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer transition-all border ${
-                                isDone 
-                                  ? 'bg-white/30 border-white/50 text-white font-bold shadow-xs' 
-                                  : 'bg-black/15 border-white/15 text-white hover:bg-black/25'
-                              }`}
-                              onClick={() => handleToggleStep(st.step_order)}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] shrink-0 font-black ${
-                                  isDone ? 'bg-white text-[#e17055] font-black border-white' : 'border-white/60 text-white'
-                                }`}>
-                                  {isDone ? '✓' : i + 1}
-                                </div>
-                                <span className="text-xs sm:text-sm font-bold truncate">{st.title}</span>
-                              </div>
-                              <span className={`text-[11px] font-black px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wide ${
-                                isDone ? 'bg-white text-[#e17055]' : 'bg-black/20 text-white/80'
-                              }`}>
-                                {isDone ? 'Done' : 'Pending'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Challenge Action Buttons: Cancel, Add Extra Time & Complete */}
-                    <div className="flex flex-col sm:flex-row gap-2.5 pt-2 border-t border-white/20">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => setIsCancelModalOpen(true)}
-                          className="flex-1 sm:flex-none py-2.5 sm:py-3 px-3.5 bg-black/25 hover:bg-black/35 text-white font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/25"
-                          id="btn-open-cancel-challenge-dashboard"
-                          title="Cancel this challenge"
-                        >
-                          <Trash2 className="w-4 h-4 text-white" />
-                          Cancel
-                        </button>
-                        <button 
-                          onClick={() => setIsAddTimeModalOpen(true)}
-                          className="flex-1 sm:flex-none py-2.5 sm:py-3 px-3.5 bg-black/25 hover:bg-black/35 text-white font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/25"
-                          id="btn-open-add-time"
-                          title="Add more time to this challenge"
-                        >
-                          <Plus className="w-4 h-4 text-white" />
-                          Add Time
-                        </button>
-                      </div>
-                      <button 
-                        onClick={handleCompleteActiveChallenge}
-                        className="flex-1 py-3 sm:py-3.5 px-5 bg-white text-[#1a1c2e] hover:text-[#00b894] font-black rounded-2xl text-sm sm:text-base shadow-2xl shadow-black/30 hover:shadow-emerald-500/20 ring-4 ring-white/60 hover:ring-white transition-all flex items-center justify-center gap-2.5 cursor-pointer hover:scale-103 active:scale-98 relative group overflow-hidden"
-                        id="btn-mark-challenge-complete"
-                      >
-                        <span className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 group-hover:text-white" />
-                        </span>
-                        <span className="tracking-tight">Mark as Complete <span className="text-[#00b894] font-black">(+10 Pts)</span></span>
-                        <span className="inline-block text-amber-500 text-base group-hover:rotate-12 transition-transform">✨</span>
-                      </button>
-                    </div>
-                  </div>
+                    })
                 ) : (
-                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center shadow-sm mb-4">
-                    <div className="w-12 h-12 rounded-full bg-[#f1eefe] text-[#6c5ce7] flex items-center justify-center text-xl mx-auto mb-3">
-                      ⚡
-                    </div>
-                    <h4 className="text-base font-bold text-[#1a1c2e] mb-1">No active challenge right now</h4>
-                    <p className="text-xs text-[#8a8ca3] mb-4">Pick a skill roadmap to challenge yourself against the clock and earn points.</p>
-                    <button 
-                      onClick={() => setCurrentPage('discover')}
-                      className="px-4 py-2 bg-[#6c5ce7] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
-                    >
-                      Browse Skill Roadmaps →
-                    </button>
+                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center text-xs text-[#8a8ca3]">
+                    No completed challenges yet. Finish your active sprint to earn your first completion badge!
                   </div>
                 )}
-
-                {/* Stat Mini Grid */}
-                <div className="stat-mini-grid">
-                  <div className="stat-mini">
-                    <div className="val">{currentUser.points}</div>
-                    <div className="lbl">total points</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="val">{currentUser.current_streak} days</div>
-                    <div className="lbl">current streak</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="val">{(completedSkillsMap[currentUser.id] || []).length}</div>
-                    <div className="lbl">skills completed</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="val">#3</div>
-                    <div className="lbl">batch rank</div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Right Column: Badges */}
-              <div className="badge-side">
-                <div className="section-title" style={{ marginBottom: '18px' }}>Badges</div>
-                
-                {badges.map((badge) => (
-                  <div 
-                    key={badge.id}
-                    className={`badge-item ${badge.unlocked ? '' : 'badge-locked'}`}
-                  >
-                    <div 
-                      className="badge-circle" 
-                      style={{ background: badge.bg_color || (badge.unlocked ? '#6c5ce7' : '#b2bec3') }}
-                    >
-                      {badge.icon_symbol || '★'}
-                    </div>
-                    <div>
-                      <h5>{badge.name}</h5>
-                      <p>{badge.description}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
 
             </div>
+
           </div>
         </div>
       )}
@@ -1923,117 +2023,300 @@ export default function App() {
       {/* ========================================================================= */}
       {/* PAGE 7 — LEADERBOARD */}
       {/* ========================================================================= */}
-      {currentPage === 'leaderboard' && (
-        <div className="page" id="page-leaderboard">
-          <div className="page-tag">PAGE 7 — LEADERBOARD</div>
+      {currentPage === 'leaderboard' && (() => {
+        const userRank = filteredLeaderboardProfiles.findIndex(p => p.id === currentUser.id) + 1;
+        const batchTabs = [
+          { id: 'All departments', label: 'All Students' },
+          { id: 'Batch 55', label: 'Batch 55' },
+          { id: 'Batch 56', label: 'Batch 56' },
+          { id: 'Batch 57', label: 'Batch 57' },
+        ];
 
-          <div className="content">
-            
-            {/* Batch Filter Tabs */}
-            <div className="lb-tabs">
-              {['Batch 55', 'Batch 56', 'Batch 57', 'All departments'].map((tab) => (
-                <div 
-                  key={tab}
-                  className={`lb-tab cursor-pointer select-none transition-all ${
-                    selectedBatchFilter === tab ? 'active' : 'hover:bg-slate-100'
-                  }`}
-                  onClick={() => setSelectedBatchFilter(tab)}
-                  id={`lb-tab-${tab.replace(/\s+/g, '-').toLowerCase()}`}
-                >
-                  {tab}
-                </div>
-              ))}
-            </div>
+        return (
+          <div className="page" id="page-leaderboard">
+            <div className="page-tag">PAGE 7 — LEADERBOARD</div>
 
-            {/* Top 3 Podium View */}
-            <div className="lb-podium">
+            <div className="content">
               
-              {/* #2 Silver (Left) */}
-              {top2 && (
-                <div 
-                  className="podium-col silver cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => handleOpenUserProfile(top2.id)}
-                >
-                  <div className="avatar-big">
-                    {top2.id === currentUser.id ? 'YO' : top2.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              {/* Leaderboard Header Banner */}
+              <div className="bg-white border border-[#e4e5ee] rounded-2xl p-5 sm:p-6 mb-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                      <Trophy className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-[#1a1c2e] tracking-tight">
+                      Campus Leaderboard
+                    </h2>
                   </div>
-                  <div className="podium-block">2</div>
-                  <div className="pname">{top2.id === currentUser.id ? 'You' : top2.full_name}</div>
-                  <div className="ppts">{top2.points} pts</div>
+                  <p className="text-xs text-[#8a8ca3] max-w-md">
+                    Live peer rankings based on completed skill challenges and streak consistency.
+                  </p>
                 </div>
-              )}
 
-              {/* #1 Gold (Center) */}
-              {top1 && (
-                <div 
-                  className="podium-col gold cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => handleOpenUserProfile(top1.id)}
-                >
-                  <div className="avatar-big">
-                    {top1.id === currentUser.id ? 'YO' : top1.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                {/* User's quick rank status */}
+                <div className="flex items-center gap-2.5 bg-[#f8fafc] border border-[#e2e8f0] px-4 py-2.5 rounded-xl self-stretch sm:self-auto justify-between sm:justify-start">
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase font-bold text-[#8a8ca3] tracking-wider">Your Position</div>
+                    <div className="text-sm font-black text-[#1a1c2e] flex items-center gap-1.5">
+                      {userRank > 0 ? (
+                        <span className="text-[#6c5ce7]">#{userRank} on Board</span>
+                      ) : (
+                        <span className="text-[#8a8ca3]">Unranked</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="podium-block">1</div>
-                  <div className="pname">{top1.id === currentUser.id ? 'You' : top1.full_name}</div>
-                  <div className="ppts">{top1.points} pts</div>
-                </div>
-              )}
-
-              {/* #3 Bronze (Right) */}
-              {top3 && (
-                <div 
-                  className="podium-col bronze cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => handleOpenUserProfile(top3.id)}
-                >
-                  <div className="avatar-big">
-                    {top3.id === currentUser.id ? 'YO' : top3.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  <div className="w-[1px] h-7 bg-[#e2e8f0] mx-1" />
+                  <div className="text-right sm:text-left">
+                    <div className="text-[10px] uppercase font-bold text-[#8a8ca3] tracking-wider">Total Score</div>
+                    <div className="text-sm font-black text-[#6c5ce7] flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-[#6c5ce7]" />
+                      {currentUser.points} pts
+                    </div>
                   </div>
-                  <div className="podium-block">3</div>
-                  <div className="pname">{top3.id === currentUser.id ? 'You' : top3.full_name}</div>
-                  <div className="ppts">{top3.points} pts</div>
                 </div>
-              )}
+              </div>
 
-            </div>
+              {/* Filter Tabs */}
+              <div className="lb-filter-row">
+                {batchTabs.map(tab => {
+                  const count = tab.id === 'All departments' 
+                    ? profiles.length 
+                    : profiles.filter(p => p.batch_number === tab.id).length;
+                  const isActive = selectedBatchFilter === tab.id;
 
-            {/* Ranked List */}
-            <div className="lb-list">
-              {filteredLeaderboardProfiles.map((p, idx) => {
-                const rank = idx + 1;
-                const isYou = p.id === currentUser.id;
-                const initials = isYou ? 'YO' : p.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
-
-                return (
-                  <div 
-                    key={p.id}
-                    className={`lb-row cursor-pointer transition-colors ${isYou ? 'you' : 'hover:bg-[#f9f9fc]'}`}
-                    onClick={() => handleOpenUserProfile(p.id)}
-                    id={`lb-row-rank-${rank}`}
-                  >
-                    <div className="lb-rank">{rank}</div>
-                    <div 
-                      className="lb-avatar" 
-                      style={{ 
-                        background: rank === 1 ? '#fdcb6e' : (isYou ? '#6c5ce7' : '#1a1c2e'),
-                        color: rank === 1 ? '#7a5200' : '#fff'
-                      }}
+                  return (
+                    <button 
+                      key={tab.id}
+                      type="button"
+                      className={`lb-filter-btn cursor-pointer select-none ${isActive ? 'active' : ''}`}
+                      onClick={() => setSelectedBatchFilter(tab.id)}
+                      id={`btn-lb-filter-${tab.id.replace(/\s+/g, '-').toLowerCase()}`}
                     >
-                      {initials}
-                    </div>
-                    <div className="lb-name">
-                      {isYou ? 'You' : p.full_name}
-                      <span className="ml-2 text-xs text-[#8a8ca3] font-normal">
-                        ({p.department} · {p.batch_number})
+                      <span>{tab.label}</span>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-[#f1f5f9] text-[#64748b]'}`}>
+                        {count}
                       </span>
-                    </div>
-                    <div className="lb-pts">{p.points}</div>
-                  </div>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
 
+              {/* Top 3 3D Podium */}
+              {filteredLeaderboardProfiles.length > 0 && (
+                <div className="podium-container">
+                  
+                  {/* #2 Silver (Left) */}
+                  {top2 && (
+                    <div 
+                      className="podium-col silver"
+                      onClick={() => handleOpenUserProfile(top2.id)}
+                      id="podium-rank-2"
+                    >
+                      <div className="podium-avatar-wrap">
+                        <div className="avatar-big">
+                          {top2.avatar_url ? (
+                            <img src={top2.avatar_url} alt={top2.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            top2.id === currentUser.id ? 'YO' : top2.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="podium-block">
+                        <span className="text-[10px] tracking-wider uppercase opacity-75">SILVER</span>
+                        <div className="podium-rank-num">2</div>
+                      </div>
+
+                      <div className="pname">
+                        {top2.id === currentUser.id ? `${top2.full_name} (You)` : top2.full_name}
+                      </div>
+                      <div className="pmeta">
+                        {top2.department} · {top2.batch_number}
+                      </div>
+                      <div className="ppts-pill">
+                        🥈 {top2.points} pts
+                      </div>
+                    </div>
+                  )}
+
+                  {/* #1 Gold (Center) */}
+                  {top1 && (
+                    <div 
+                      className="podium-col gold"
+                      onClick={() => handleOpenUserProfile(top1.id)}
+                      id="podium-rank-1"
+                    >
+                      <div className="podium-avatar-wrap">
+                        <div className="podium-crown-icon">👑</div>
+                        <div className="avatar-big">
+                          {top1.avatar_url ? (
+                            <img src={top1.avatar_url} alt={top1.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            top1.id === currentUser.id ? 'YO' : top1.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="podium-block">
+                        <span className="text-[10px] tracking-wider uppercase opacity-80">CHAMPION</span>
+                        <div className="podium-rank-num">1</div>
+                      </div>
+
+                      <div className="pname">
+                        {top1.id === currentUser.id ? `${top1.full_name} (You)` : top1.full_name}
+                      </div>
+                      <div className="pmeta">
+                        {top1.department} · {top1.batch_number}
+                      </div>
+                      <div className="ppts-pill">
+                        🥇 {top1.points} pts
+                      </div>
+                    </div>
+                  )}
+
+                  {/* #3 Bronze (Right) */}
+                  {top3 && (
+                    <div 
+                      className="podium-col bronze"
+                      onClick={() => handleOpenUserProfile(top3.id)}
+                      id="podium-rank-3"
+                    >
+                      <div className="podium-avatar-wrap">
+                        <div className="avatar-big">
+                          {top3.avatar_url ? (
+                            <img src={top3.avatar_url} alt={top3.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            top3.id === currentUser.id ? 'YO' : top3.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="podium-block">
+                        <span className="text-[10px] tracking-wider uppercase opacity-75">BRONZE</span>
+                        <div className="podium-rank-num">3</div>
+                      </div>
+
+                      <div className="pname">
+                        {top3.id === currentUser.id ? `${top3.full_name} (You)` : top3.full_name}
+                      </div>
+                      <div className="pmeta">
+                        {top3.department} · {top3.batch_number}
+                      </div>
+                      <div className="ppts-pill">
+                        🥉 {top3.points} pts
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* Ranked List Table */}
+              {filteredLeaderboardProfiles.length === 0 ? (
+                <div className="bg-white border border-[#e4e5ee] rounded-2xl p-10 text-center shadow-xs">
+                  <Trophy className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-[#1a1c2e]">No students in this batch yet</h3>
+                  <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mt-1 mb-4">
+                    Be the first in this cohort to finish a skill challenge and take the top spot!
+                  </p>
+                  <button 
+                    onClick={() => setCurrentPage('discover')} 
+                    className="px-5 py-2.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-[#6c5ce7]/20"
+                  >
+                    Explore Roadmaps →
+                  </button>
+                </div>
+              ) : (
+                <div className="lb-table-card">
+                  {/* Table Header */}
+                  <div className="lb-table-header">
+                    <div>Rank</div>
+                    <div>Student</div>
+                    <div className="hidden sm:block">Cohort & Track</div>
+                    <div className="hidden sm:block text-center">Streak</div>
+                    <div className="text-right">Points</div>
+                  </div>
+
+                  {/* Table Rows */}
+                  {filteredLeaderboardProfiles.map((p, idx) => {
+                    const rank = idx + 1;
+                    const isYou = p.id === currentUser.id;
+                    const initials = isYou ? 'YO' : p.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
+                    return (
+                      <div 
+                        key={p.id} 
+                        className={`lb-row-item ${isYou ? 'is-current-user' : ''}`}
+                        onClick={() => handleOpenUserProfile(p.id)}
+                        id={`lb-row-rank-${rank}`}
+                      >
+                        {/* Rank Badge */}
+                        <div>
+                          <div className={`lb-rank-badge ${
+                            rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other'
+                          }`}>
+                            {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+                          </div>
+                        </div>
+
+                        {/* Student Name & Avatar */}
+                        <div className="lb-student-info">
+                          <div 
+                            className="lb-student-avatar"
+                            style={{ 
+                              background: rank === 1 ? '#f59e0b' : (isYou ? '#6c5ce7' : '#1e293b')
+                            }}
+                          >
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt={p.full_name} className="w-full h-full object-cover" />
+                            ) : (
+                              initials
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="lb-student-name">
+                              <span>{p.full_name}</span>
+                              {isYou && <span className="lb-you-tag">YOU</span>}
+                            </div>
+                            <div className="text-[11px] text-[#8a8ca3] sm:hidden truncate">
+                              {p.department} · {p.batch_number}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Department / Batch (Desktop) */}
+                        <div className="hidden sm:block lb-dept-pill truncate">
+                          {p.department} · <span className="text-[#1a1c2e] font-bold">{p.batch_number}</span>
+                        </div>
+
+                        {/* Streak (Desktop) */}
+                        <div className="hidden sm:flex items-center justify-center">
+                          {p.current_streak > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-bold border border-orange-200/60">
+                              🔥 {p.current_streak}d
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#cbd5e1]">-</span>
+                          )}
+                        </div>
+
+                        {/* Total Points */}
+                        <div className="lb-points-val justify-end">
+                          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span>{p.points}</span>
+                          <span className="text-[11px] text-[#8a8ca3] font-normal hidden sm:inline">pts</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* PAGE 8 — PUBLIC PROFILE */}
@@ -2054,7 +2337,11 @@ export default function App() {
             {/* Profile Hero */}
             <div className="profile-hero shadow-lg">
               <div className="profile-avatar-big">
-                {targetProfile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                {targetProfile.avatar_url ? (
+                  <img src={targetProfile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  targetProfile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                )}
               </div>
               <div className="profile-hero-info">
                 <h2>{targetProfile.full_name}</h2>
@@ -2070,7 +2357,7 @@ export default function App() {
                   <span>day streak</span>
                 </div>
                 <div className="stat">
-                  <b>#1</b>
+                  <b>{targetBatchRank}</b>
                   <span>in batch</span>
                 </div>
               </div>
@@ -2085,19 +2372,19 @@ export default function App() {
                   <div className="section-title" style={{ marginBottom: '14px' }}>Details</div>
                   <div className="info-row">
                     <span>Department</span>
-                    <span>{targetProfile.department}</span>
+                    <span>{targetProfile.department || 'CSE'}</span>
                   </div>
                   <div className="info-row">
                     <span>Batch</span>
-                    <span>{targetProfile.batch_number}</span>
+                    <span>{targetProfile.batch_number || 'General'}</span>
                   </div>
                   <div className="info-row">
                     <span>Roll / ID</span>
-                    <span>{targetProfile.roll_number}</span>
+                    <span>{targetProfile.roll_number || 'N/A'}</span>
                   </div>
                   <div className="info-row">
                     <span>Skills completed</span>
-                    <span>{targetUserCompletedSkills.length || 4}</span>
+                    <span>{selectedUserCompletedProgress.length}</span>
                   </div>
 
                   <div className="social-links-row">
@@ -2145,18 +2432,27 @@ export default function App() {
               <div>
                 <div className="section-title">Completed skills</div>
                 
-                {targetUserCompletedSkills.map((cs, idx) => (
-                  <div key={idx} className="completed-skill-card">
-                    <div className="icon" style={{ background: cs.bg || '#e84393' }}>
-                      {cs.icon || 'S'}
-                    </div>
-                    <div className="info">
-                      <h5>{cs.skillName}</h5>
-                      <p>{cs.duration}</p>
-                    </div>
-                    <div className="time-badge">On time</div>
+                {selectedUserCompletedProgress.length > 0 ? (
+                  selectedUserCompletedProgress.map((cs) => {
+                    const sk = skills.find(s => s.id === cs.skill_id) || { name: 'Skill', icon: 'S', bg_color: '#6c5ce7' };
+                    return (
+                      <div key={cs.id} className="completed-skill-card">
+                        <div className="icon" style={{ background: sk.bg_color || '#e84393' }}>
+                          {sk.icon || 'S'}
+                        </div>
+                        <div className="info">
+                          <h5>{sk.name}</h5>
+                          <p>Finished on time (+10 pts)</p>
+                        </div>
+                        <div className="time-badge">Completed</div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center text-xs text-[#8a8ca3]">
+                    No completed skills recorded yet for this student.
                   </div>
-                ))}
+                )}
               </div>
 
             </div>
@@ -2206,26 +2502,26 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Admin Stats Grid */}
+              {/* Real Admin Stats Grid */}
               <div className="admin-stats-grid">
                 <div className="admin-stat-card">
                   <div className="icon-wrap" style={{ background: '#6c5ce7' }}>👥</div>
-                  <div className="val">{profiles.length * 16}</div>
+                  <div className="val">{adminStats.totalUsers}</div>
                   <div className="lbl">Total users</div>
                 </div>
                 <div className="admin-stat-card">
                   <div className="icon-wrap" style={{ background: '#00b894' }}>⚡</div>
-                  <div className="val">34</div>
+                  <div className="val">{adminStats.activeChallenges}</div>
                   <div className="lbl">Active challenges right now</div>
                 </div>
                 <div className="admin-stat-card">
                   <div className="icon-wrap" style={{ background: '#e17055' }}>🔥</div>
-                  <div className="val">HTML</div>
+                  <div className="val">{adminStats.mostPopularSkillName}</div>
                   <div className="lbl">Most popular skill</div>
                 </div>
                 <div className="admin-stat-card">
                   <div className="icon-wrap" style={{ background: '#fdcb6e' }}>🏆</div>
-                  <div className="val">312</div>
+                  <div className="val">{adminStats.totalCompletions}</div>
                   <div className="lbl">Total completions</div>
                 </div>
               </div>
@@ -2252,7 +2548,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* TAB 1: USERS TABLE */}
+              {/* TAB 1: REAL USERS TABLE */}
               {adminTab === 'users' && (
                 <div className="admin-table">
                   <div className="admin-table-head">
@@ -2279,8 +2575,8 @@ export default function App() {
                           <div className="text-[11px] text-[#8a8ca3] font-normal">{p.email}</div>
                         )}
                       </div>
-                      <div>{p.department}</div>
-                      <div>{p.batch_number}</div>
+                      <div>{p.department || 'N/A'}</div>
+                      <div>{p.batch_number || 'N/A'}</div>
                       <div className="font-bold">{p.points}</div>
                       <div>
                         <span className={`admin-badge-role ${p.is_banned ? 'bg-red-100 text-red-600' : ''}`}>
