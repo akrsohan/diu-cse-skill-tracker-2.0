@@ -186,81 +186,95 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         .panel.active{display:block;animation:fadein .5s ease;width:100%;}
         @keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
-        @media (max-width: 768px) {
+        @media (max-width: 640px) {
           .stage {
-            flex-direction: row;
-            width: 100%;
-            max-width: 100%;
-            height: 520px;
+            flex-direction: column !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: 88vh;
+            max-height: 95vh;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,.9);
           }
-          .visual, .formside {
-            width: 50%;
-            height: 100%;
-          }
+          .stage.signup .visual{transform:none !important;}
+          .stage.signup .formside{transform:none !important;}
           .visual {
-            padding: 12px;
+            width: 100% !important;
+            height: 130px !important;
+            min-height: 130px !important;
+            padding: 16px;
           }
           .brand {
-            padding: 0 10px;
+            padding: 0 16px;
           }
           .brand h1 {
-            font-size: 18px;
+            font-size: 20px;
             margin-bottom: 4px;
           }
           .brand p {
-            font-size: 11px;
+            font-size: 12px;
             line-height: 1.4;
             max-width: 100%;
           }
           .formside {
-            padding: 16px 12px;
+            width: 100% !important;
+            height: auto !important;
+            flex: 1;
+            padding: 20px 16px;
+            overflow-y: auto;
           }
           .formside form {
             max-width: 100%;
           }
           .formside h2 {
-            font-size: 20px;
-            margin-bottom: 14px;
+            font-size: 24px;
+            margin-bottom: 16px;
           }
           .toggle-title {
-            font-size: 10px;
-            margin-bottom: 2px;
+            font-size: 11px;
+            margin-bottom: 4px;
           }
           .field {
-            margin-bottom: 12px;
+            margin-bottom: 14px;
           }
           .field input {
-            font-size: 13px;
-            padding: 10px 12px;
-            border-radius: 8px;
+            font-size: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
             font-weight: 600;
           }
           .field label {
-            font-size: 12px;
-            top: 10px;
-            left: 12px;
+            font-size: 13px;
+            top: 12px;
+            left: 14px;
             color: #94a3b8;
             font-weight: 600;
           }
           .field input:focus + label, .field input:not(:placeholder-shown) + label {
-            top: -8px;
-            left: 8px;
-            font-size: 9.5px;
-            padding: 0 4px;
+            top: -9px;
+            left: 10px;
+            font-size: 10.5px;
+            padding: 0 5px;
             color: #37f0ff !important;
           }
           .btn {
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 13px;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
           }
           .switch {
-            margin-top: 12px;
-            font-size: 11px;
+            margin-top: 16px;
+            font-size: 12px;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .stage {
+            width: 88vw;
+            height: 540px;
           }
         }
       ` }} />

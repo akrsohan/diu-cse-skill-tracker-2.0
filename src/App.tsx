@@ -109,8 +109,8 @@ function formatSocialLink(type: 'facebook' | 'telegram' | 'whatsapp', input?: st
 }
 
 export default function App() {
-  // Navigation
-  const [currentPage, setCurrentPage] = useState<PageType>('discover');
+  // Navigation (Default to login so users must login/signup first)
+  const [currentPage, setCurrentPage] = useState<PageType>('login');
   const [discoverView, setDiscoverView] = useState<'main' | 'fields' | 'field-skills' | 'all-skills'>('main');
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -137,8 +137,30 @@ export default function App() {
   // Selected Profile for Public Profile view
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  // Logged-in User Profile (Default to Sohan Ali Admin for immediate access)
-  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]);
+  // Logged-in User Profile (Default to safe guest profile when initialProfiles is empty)
+  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0] || {
+    id: '',
+    email: '',
+    full_name: 'Guest User',
+    department: '',
+    roll_number: '',
+    batch_number: '',
+    profile_completed: false,
+    points: 0,
+    current_streak: 0,
+    longest_streak: 0,
+    is_admin: false,
+    is_banned: false
+  });
+
+  // Enforce mandatory login/signup: if user is not logged in, force page to login/signup
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) {
+      if (currentPage !== 'login' && currentPage !== 'signup') {
+        setCurrentPage('login');
+      }
+    }
+  }, [currentUser, currentPage]);
 
   // Active Challenge (User Progress)
   const [activeProgress, setActiveProgress] = useState<UserProgress | null>(null);
@@ -246,6 +268,16 @@ export default function App() {
 
   // Sync Supabase Auth Session on mount and listen to changes
   useEffect(() => {
+    const RESET_KEY = 'skilltrack_accounts_reset_v4';
+    if (!localStorage.getItem(RESET_KEY)) {
+      localStorage.removeItem('skilltrack_profiles_cache');
+      localStorage.removeItem('skilltrack_progress_cache');
+      localStorage.removeItem('skilltrack_completed_progress_cache');
+      localStorage.removeItem('skilltrack_badges_cache');
+      supabase.auth.signOut();
+      localStorage.setItem(RESET_KEY, 'true');
+    }
+
     if (!isSupabaseConfigured()) {
       refreshAppData();
       return;
@@ -920,35 +952,37 @@ export default function App() {
       )}
 
       {/* Main App Navigation Bar */}
-      <Navbar 
-        currentPage={currentPage}
-        setCurrentPage={(page) => {
-          if (page === 'discover') {
-            setDiscoverView('main');
-            setSelectedFieldId(null);
-          }
-          if (page === 'profile') {
-            setSelectedUserId(currentUser.id);
-          }
-          setCurrentPage(page);
-        }}
-        onNavigate={(page) => {
-          if (page === 'discover') {
-            setDiscoverView('main');
-            setSelectedFieldId(null);
-          }
-          if (page === 'profile') {
-            setSelectedUserId(currentUser.id);
-          }
-          setCurrentPage(page);
-        }}
-        currentUser={currentUser}
-        onSignOut={handleSignOut}
-        onSelectUserForProfile={(userId) => {
-          setSelectedUserId(userId);
-          setCurrentPage('profile');
-        }}
-      />
+      {currentUser && currentUser.id && (
+        <Navbar 
+          currentPage={currentPage}
+          setCurrentPage={(page) => {
+            if (page === 'discover') {
+              setDiscoverView('main');
+              setSelectedFieldId(null);
+            }
+            if (page === 'profile') {
+              setSelectedUserId(currentUser.id);
+            }
+            setCurrentPage(page);
+          }}
+          onNavigate={(page) => {
+            if (page === 'discover') {
+              setDiscoverView('main');
+              setSelectedFieldId(null);
+            }
+            if (page === 'profile') {
+              setSelectedUserId(currentUser.id);
+            }
+            setCurrentPage(page);
+          }}
+          currentUser={currentUser}
+          onSignOut={handleSignOut}
+          onSelectUserForProfile={(userId) => {
+            setSelectedUserId(userId);
+            setCurrentPage('profile');
+          }}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* PAGE 1 — LOGIN / SIGNUP */}
@@ -2844,7 +2878,7 @@ export default function App() {
       )}
 
       {/* Main Website Footer */}
-      {currentPage !== 'login' && currentPage !== 'signup' && (
+      {currentUser && currentUser.id && currentPage !== 'login' && currentPage !== 'signup' && (
         <Footer 
           currentUser={currentUser}
           onNavigate={(page) => {
