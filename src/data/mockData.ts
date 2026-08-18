@@ -149,97 +149,6 @@ export const initialSkills: Skill[] = [
     avg_days: '4 days',
     learner_count: 19,
     step_count: 3
-  },
-  {
-    id: 'skill-ethical-hacking',
-    field_id: 'field-2',
-    name: 'Ethical Hacking',
-    description: 'Information gathering, vulnerability scanning, exploitation & Kali Linux tools',
-    order_index: 9,
-    icon: 'EH',
-    bg_color: '#e17055',
-    difficulty: 'Intermediate',
-    avg_days: '5 days',
-    learner_count: 35,
-    step_count: 3
-  },
-  {
-    id: 'skill-network-security',
-    field_id: 'field-2',
-    name: 'Network Security',
-    description: 'TCP/IP packet analysis, Wireshark, firewall rules, VPNs and cryptography',
-    order_index: 10,
-    icon: 'NS',
-    bg_color: '#d63031',
-    difficulty: 'Intermediate',
-    avg_days: '4 days',
-    learner_count: 27,
-    step_count: 3
-  },
-  {
-    id: 'skill-machine-learning',
-    field_id: 'field-4',
-    name: 'Machine Learning',
-    description: 'Scikit-learn, regression, classification, clustering and model evaluation',
-    order_index: 11,
-    icon: 'ML',
-    bg_color: '#0984e3',
-    difficulty: 'Advanced',
-    avg_days: '7 days',
-    learner_count: 34,
-    step_count: 4
-  },
-  {
-    id: 'skill-dsa-cp',
-    field_id: 'field-5',
-    name: 'DSA for CP',
-    description: 'Recursion, two pointers, binary search, trees, graphs and dynamic programming',
-    order_index: 12,
-    icon: 'CP',
-    bg_color: '#fdcb6e',
-    difficulty: 'Advanced',
-    avg_days: '8 days',
-    learner_count: 48,
-    step_count: 4
-  },
-  {
-    id: 'skill-cpp-cp',
-    field_id: 'field-5',
-    name: 'C++ for CP',
-    description: 'STL vectors, maps, sets, fast I/O, bitwise tricks and competitive templates',
-    order_index: 13,
-    icon: 'C++',
-    bg_color: '#e84393',
-    difficulty: 'Intermediate',
-    avg_days: '3 days',
-    learner_count: 39,
-    step_count: 3
-  },
-  {
-    id: 'skill-flutter',
-    field_id: 'field-6',
-    name: 'Flutter & Dart',
-    description: 'Cross-platform widgets, state management (Provider/Riverpod), responsive UI and APIs',
-    order_index: 14,
-    icon: 'FL',
-    bg_color: '#00cec9',
-    difficulty: 'Intermediate',
-    avg_days: '6 days',
-    learner_count: 29,
-    step_count: 4
-  },
-  {
-    id: 'skill-react-native',
-    field_id: 'field-6',
-    name: 'React Native',
-    description: 'Expo, mobile navigation, native device sensors, push notifications and releases',
-    order_index: 15,
-    icon: 'RN',
-    bg_color: '#6c5ce7',
-    difficulty: 'Intermediate',
-    avg_days: '5 days',
-    learner_count: 25,
-    step_count: 3
   }
 ];
 
@@ -248,110 +157,110 @@ export const initialRoadmapSteps: Record<string, RoadmapStep[]> = {
     {
       id: 'step-html-1',
       skill_id: 'skill-html',
-      title: 'Learn basic tags',
-      description: 'html, head, body, headings (h1-h6), paragraphs (p), links (a), and images (img)',
+      title: 'Semantic HTML5 Architecture',
+      description: 'Master semantic tags (<header>, <nav>, <main>, <article>, <section>, <footer>) for clean document outlines and accessibility.',
       step_order: 1,
-      resource_link: 'https://developer.mozilla.org/en-US/docs/Learn/HTML'
+      resource_link: 'https://developer.mozilla.org/en-US/docs/Glossary/Semantics'
     },
     {
       id: 'step-html-2',
       skill_id: 'skill-html',
-      title: 'Forms and inputs',
-      description: 'form tag, input types (text, email, password), textarea, button, select, and label',
+      title: 'Accessible Forms & Validation',
+      description: 'Building robust accessible forms with proper labels, fieldsets, ARIA attributes, and HTML5 native constraint validation.',
       step_order: 2,
       resource_link: 'https://developer.mozilla.org/en-US/docs/Learn/Forms'
     },
     {
       id: 'step-html-3',
       skill_id: 'skill-html',
-      title: 'Semantic HTML',
-      description: 'header, nav, main, footer, article, section, aside, accessibility and SEO tags',
+      title: 'SEO Meta Tags & Open Graph',
+      description: 'Optimizing page discoverability with title tags, meta descriptions, viewport settings, and social sharing Open Graph tags.',
       step_order: 3,
-      resource_link: 'https://web.dev/learn/html/semantic-html'
+      resource_link: 'https://ogp.me/'
     }
   ],
   'skill-c': [
     {
       id: 'step-c-1',
       skill_id: 'skill-c',
-      title: 'Variables, Types & Operators',
-      description: 'Primitive datatypes, format specifiers, arithmetic and bitwise operators in C',
+      title: 'Pointers & Memory Allocation',
+      description: 'Deep dive into memory addresses, pointer arithmetic, stack vs heap allocation, malloc, calloc, and free.',
       step_order: 1,
-      resource_link: 'https://www.learn-c.org/'
+      resource_link: 'https://www.tutorialspoint.com/cprogramming/c_pointers.htm'
     },
     {
       id: 'step-c-2',
       skill_id: 'skill-c',
-      title: 'Control Structures & Arrays',
-      description: 'If-else branching, switch-cases, while and for loops, 1D/2D arrays and string manipulation',
+      title: 'Structures & Linked Lists',
+      description: 'Designing custom data types with structs and implementing dynamic singly and doubly linked lists in C.',
       step_order: 2,
-      resource_link: 'https://www.geeksforgeeks.org/c-programming-language/'
+      resource_link: 'https://www.geeksforgeeks.org/data-structures/linked-list/'
     },
     {
       id: 'step-c-3',
       skill_id: 'skill-c',
-      title: 'Pointers & Dynamic Memory',
-      description: 'Pointer arithmetic, dereferencing, struct definitions, malloc/calloc/free memory allocation',
+      title: 'File I/O & Preprocessor Directives',
+      description: 'Reading and writing binary/text files securely using fopen, fread, fwrite, and utilizing macros.',
       step_order: 3,
-      resource_link: 'https://en.cppreference.com/w/c'
+      resource_link: 'https://en.cppreference.com/w/c/io'
     }
   ],
   'skill-js': [
     {
       id: 'step-js-1',
       skill_id: 'skill-js',
-      title: 'ES6+ Syntax & Scope',
-      description: 'let/const, arrow functions, template literals, destructuring, rest/spread, and closures',
+      title: 'Asynchronous JavaScript & Event Loop',
+      description: 'Mastering callbacks, Promises, async/await, call stack, task queue, and microtask queue execution.',
       step_order: 1,
-      resource_link: 'https://javascript.info/'
+      resource_link: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop'
     },
     {
       id: 'step-js-2',
       skill_id: 'skill-js',
-      title: 'DOM Manipulation & Events',
-      description: 'querySelector, addEventListener, event bubbling, modifying classes and styles dynamically',
+      title: 'Closures & Scope Chain',
+      description: 'Understanding lexical scoping, closures, IIFE, execution context, and memory management in JS.',
       step_order: 2,
-      resource_link: 'https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model'
+      resource_link: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures'
     },
     {
       id: 'step-js-3',
       skill_id: 'skill-js',
-      title: 'Async JS, Promises & async/await',
-      description: 'Understanding event loop, microtasks, Promise chaining, try/catch error handling',
+      title: 'DOM Manipulation & Event Bubbling',
+      description: 'Dynamic element creation, querying, event delegation, bubbling, and capture phases.',
       step_order: 3,
-      resource_link: 'https://javascript.info/async'
+      resource_link: 'https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events'
     },
     {
       id: 'step-js-4',
       skill_id: 'skill-js',
-      title: 'Fetch API & JSON Storage',
-      description: 'Calling RESTful APIs, parsing JSON payloads, localStorage and sessionStorage APIs',
+      title: 'ES6+ Features & Modules',
+      description: 'Arrow functions, destructuring, spread/rest operators, ES modules (import/export), and optional chaining.',
       step_order: 4,
-      resource_link: 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'
+      resource_link: 'https://javascript.info/es-modern'
     }
   ],
   'skill-css': [
     {
       id: 'step-css-1',
       skill_id: 'skill-css',
-      title: 'Box Model & Typography',
-      description: 'Content, padding, border, margin, box-sizing, web fonts, line-height & colors',
+      title: 'Flexbox Layout Mastery',
+      description: 'Aligning items, flex-direction, wrapping, justification, and building fluid responsive navigation bars.',
       step_order: 1,
-      resource_link: 'https://web.dev/learn/css/'
+      resource_link: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/'
     },
     {
       id: 'step-css-2',
       skill_id: 'skill-css',
-      title: 'Flexbox & CSS Grid',
-      description: '1D flex alignment, justify-content, 2D grid template columns, gaps and auto-fill',
+      title: 'CSS Grid System',
+      description: 'Two-dimensional grid layouts, template areas, auto-fit, auto-fill, and complex dashboard framing.',
       step_order: 2,
-      resource_link: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/'
+      resource_link: 'https://css-tricks.com/snippets/css/complete-guide-grid/'
     },
     {
       id: 'step-css-3',
       skill_id: 'skill-css',
-      title: 'Responsive & Keyframe Animations',
-      description: 'Media queries for mobile/tablet breakpoints, transitions, transforms and @keyframes',
+      title: 'Animations & Custom Properties',
+      description: 'CSS variables, keyframe animations, transition timing functions, and smooth micro-interactions.',
       step_order: 3,
       resource_link: 'https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations'
     }
@@ -360,84 +269,84 @@ export const initialRoadmapSteps: Record<string, RoadmapStep[]> = {
     {
       id: 'step-py-1',
       skill_id: 'skill-python',
-      title: 'Python Fundamentals',
-      description: 'Variables, loops, functions, lists, tuples, sets, and dictionary data types',
+      title: 'Pythonic Data Structures & Comprehensions',
+      description: 'Mastering lists, dictionaries, sets, tuples, list/dict comprehensions, and generator expressions.',
       step_order: 1,
-      resource_link: 'https://docs.python.org/3/tutorial/'
+      resource_link: 'https://docs.python.org/3/tutorial/datastructures.html'
     },
     {
       id: 'step-py-2',
       skill_id: 'skill-python',
-      title: 'Object-Oriented Programming',
-      description: 'Classes, instances, inheritance, dunder methods, and module imports',
+      title: 'Object-Oriented Programming in Python',
+      description: 'Classes, dunder methods, inheritance, polymorphism, properties, and encapsulation.',
       step_order: 2,
-      resource_link: 'https://realpython.com/'
+      resource_link: 'https://docs.python.org/3/tutorial/classes.html'
     },
     {
       id: 'step-py-3',
       skill_id: 'skill-python',
-      title: 'Data Analysis & File Handling',
-      description: 'File reading/writing, CSV parsing, intro to NumPy and pandas dataframes',
+      title: 'File Handling & Error Management',
+      description: 'Context managers (with statement), try/except/finally blocks, and custom exception handling.',
       step_order: 3,
-      resource_link: 'https://pandas.pydata.org/'
+      resource_link: 'https://docs.python.org/3/tutorial/errors.html'
     }
   ],
   'skill-react': [
     {
       id: 'step-react-1',
       skill_id: 'skill-react',
-      title: 'Components & JSX',
-      description: 'Functional component architecture, JSX syntax, props passing and conditional rendering',
+      title: 'React Hooks Deep Dive',
+      description: 'useState, useEffect, useContext, useMemo, useCallback, and custom hook creation.',
       step_order: 1,
-      resource_link: 'https://react.dev/'
+      resource_link: 'https://react.dev/reference/react'
     },
     {
       id: 'step-react-2',
       skill_id: 'skill-react',
-      title: 'useState & useEffect Hooks',
-      description: 'Component state triggers, lifecycle effects, dependency arrays and cleanup functions',
+      title: 'State Architecture & lifting',
+      description: 'Managing complex application state, immutability, prop drilling solutions, and Context API.',
       step_order: 2,
-      resource_link: 'https://react.dev/learn/state-a-components-memory'
+      resource_link: 'https://react.dev/learn/managing-state'
     },
     {
       id: 'step-react-3',
       skill_id: 'skill-react',
-      title: 'Custom Hooks & State Management',
-      description: 'Extracting reusable hook logic, Context API, and state lifting principles',
+      title: 'Component Lifecycle & Performance',
+      description: 'Avoiding unnecessary re-renders with React.memo, virtualization, and lazy loading.',
       step_order: 3,
-      resource_link: 'https://react.dev/learn/reusing-logic-with-custom-hooks'
+      resource_link: 'https://react.dev/reference/react/memo'
     },
     {
       id: 'step-react-4',
       skill_id: 'skill-react',
-      title: 'React Router & API Integration',
-      description: 'Client-side routing, URL parameters, loading states, and mutations with fetch',
+      title: 'Side Effects & API Integration',
+      description: 'Fetching data with async/await inside useEffect, handling loading/error states, and cleanup functions.',
       step_order: 4,
-      resource_link: 'https://reactrouter.com/'
+      resource_link: 'https://react.dev/learn/synchronizing-with-effects'
     }
   ],
   'skill-git': [
     {
       id: 'step-git-1',
       skill_id: 'skill-git',
-      title: 'Git Basics & Configuration',
-      description: 'git init, clone, status, add, commit, push, and configuring user email/name',
+      title: 'Core Git Commands & Staging',
+      description: 'git init, add, commit, status, log, diff, gitignore configuration, and git stash.',
       step_order: 1,
       resource_link: 'https://git-scm.com/doc'
     },
     {
       id: 'step-git-2',
       skill_id: 'skill-git',
-      title: 'Branching & Resolving Conflicts',
-      description: 'Creating feature branches, git switch/checkout, git merge, and resolving conflict markers',
+      title: 'Branching & Merge Conflicts',
+      description: 'Creating branches, switching, merging, rebasing, and resolving merge conflicts cleanly.',
       step_order: 2,
-      resource_link: 'https://learngitbranching.js.org/'
+      resource_link: 'https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell'
     },
     {
       id: 'step-git-3',
       skill_id: 'skill-git',
       title: 'GitHub Collaboration & PRs',
-      description: 'Forking repositories, making pull requests, code reviews, and tagging releases',
+      description: 'Forking, pulling requests, code reviews, issues, tags, and release management.',
       step_order: 3,
       resource_link: 'https://docs.github.com/en/get-started'
     }
@@ -446,287 +355,63 @@ export const initialRoadmapSteps: Record<string, RoadmapStep[]> = {
     {
       id: 'step-sql-1',
       skill_id: 'skill-sql',
-      title: 'Relational Model & CRUD',
-      description: 'CREATE TABLE, SELECT, INSERT, UPDATE, DELETE, WHERE conditions and constraints',
+      title: 'Relational Schema Design & DDL',
+      description: 'Primary keys, foreign keys, constraints (UNIQUE, NOT NULL), CREATE/ALTER tables, and normalization.',
       step_order: 1,
-      resource_link: 'https://sqlbolt.com/'
+      resource_link: 'https://www.postgresql.org/docs/current/ddl.html'
     },
     {
       id: 'step-sql-2',
       skill_id: 'skill-sql',
-      title: 'Joins & Aggregations',
-      description: 'INNER JOIN, LEFT JOIN, GROUP BY, HAVING, COUNT, SUM, and subqueries',
+      title: 'Advanced Joins & Aggregations',
+      description: 'INNER JOIN, LEFT/RIGHT/FULL OUTER JOIN, GROUP BY, HAVING, and aggregate functions.',
       step_order: 2,
-      resource_link: 'https://www.postgresqltutorial.com/'
+      resource_link: 'https://www.postgresql.org/docs/current/queries-table-expressions.html'
     },
     {
       id: 'step-sql-3',
       skill_id: 'skill-sql',
-      title: 'Indexes, Transactions & Foreign Keys',
-      description: 'B-Tree indexes, ACID transaction blocks (BEGIN, COMMIT, ROLLBACK), and cascades',
+      title: 'Indexing & Query Performance',
+      description: 'B-Tree indexes, EXPLAIN ANALYZE, query optimization, and transaction management (ACID).',
       step_order: 3,
-      resource_link: 'https://use-the-index-luke.com/'
-    }
-  ],
-  'skill-ethical-hacking': [
-    {
-      id: 'step-eh-1',
-      skill_id: 'skill-ethical-hacking',
-      title: 'Reconnaissance & Footprinting',
-      description: 'Passive & active OSINT, WHOIS, DNS enumeration, Nmap port scanning strategies',
-      step_order: 1,
-      resource_link: 'https://www.cybrary.it/'
-    },
-    {
-      id: 'step-eh-2',
-      skill_id: 'skill-ethical-hacking',
-      title: 'Vulnerability Analysis & Exploitation',
-      description: 'Metasploit framework, password cracking with John/Hashcat, CVE database searches',
-      step_order: 2,
-      resource_link: 'https://tryhackme.com/'
-    },
-    {
-      id: 'step-eh-3',
-      skill_id: 'skill-ethical-hacking',
-      title: 'Web Application Security & OWASP Top 10',
-      description: 'SQLi, XSS, CSRF, IDOR, SSRF, Burp Suite intercepting proxy workflows',
-      step_order: 3,
-      resource_link: 'https://portswigger.net/web-security'
-    }
-  ],
-  'skill-network-security': [
-    {
-      id: 'step-ns-1',
-      skill_id: 'skill-network-security',
-      title: 'TCP/IP Architecture & Wireshark',
-      description: 'Packet sniffing, 3-way handshake analysis, protocols (HTTP, TLS, DNS, DHCP, ARP)',
-      step_order: 1,
-      resource_link: 'https://www.wireshark.org/docs/'
-    },
-    {
-      id: 'step-ns-2',
-      skill_id: 'skill-network-security',
-      title: 'Firewalls, IDS/IPS & Defense',
-      description: 'iptables, pfSense, Snort rules, DMZ architecture, zero-trust network models',
-      step_order: 2,
-      resource_link: 'https://www.cisco.com/c/en/us/products/security/what-is-network-security.html'
-    },
-    {
-      id: 'step-ns-3',
-      skill_id: 'skill-network-security',
-      title: 'Applied Cryptography & SSL/TLS',
-      description: 'Symmetric/Asymmetric keys (AES, RSA, ECC), hashing (SHA256), PKI certificates',
-      step_order: 3,
-      resource_link: 'https://cryptopals.com/'
-    }
-  ],
-  'skill-machine-learning': [
-    {
-      id: 'step-ml-1',
-      skill_id: 'skill-machine-learning',
-      title: 'Mathematics & Data Preprocessing',
-      description: 'Linear algebra, calculus fundamentals, feature scaling, encoding, train/test split',
-      step_order: 1,
-      resource_link: 'https://scikit-learn.org/stable/'
-    },
-    {
-      id: 'step-ml-2',
-      skill_id: 'skill-machine-learning',
-      title: 'Supervised Learning Algorithms',
-      description: 'Linear & Logistic Regression, Decision Trees, Random Forests, Support Vector Machines',
-      step_order: 2,
-      resource_link: 'https://developers.google.com/machine-learning/crash-course'
-    },
-    {
-      id: 'step-ml-3',
-      skill_id: 'skill-machine-learning',
-      title: 'Unsupervised Learning & Clustering',
-      description: 'K-Means, Hierarchical Clustering, Principal Component Analysis (PCA) dimensionality reduction',
-      step_order: 3,
-      resource_link: 'https://www.kaggle.com/learn'
-    },
-    {
-      id: 'step-ml-4',
-      skill_id: 'skill-machine-learning',
-      title: 'Model Evaluation & Hyperparameter Tuning',
-      description: 'Confusion matrix, Precision/Recall, ROC-AUC curve, GridSearchCV, Cross-Validation',
-      step_order: 4,
-      resource_link: 'https://scikit-learn.org/stable/modules/model_evaluation.html'
-    }
-  ],
-  'skill-dsa-cp': [
-    {
-      id: 'step-dsa-1',
-      skill_id: 'skill-dsa-cp',
-      title: 'Time Complexity & Binary Search',
-      description: 'Big-O asymptotic bounds, prefix sums, two pointers, sliding window, binary search on answers',
-      step_order: 1,
-      resource_link: 'https://cp-algorithms.com/'
-    },
-    {
-      id: 'step-dsa-2',
-      skill_id: 'skill-dsa-cp',
-      title: 'Trees & Graph Traversals',
-      description: 'Binary trees, BST, BFS, DFS, Dijkstra shortest path, Disjoint Set Union (DSU)',
-      step_order: 2,
-      resource_link: 'https://usaco.guide/'
-    },
-    {
-      id: 'step-dsa-3',
-      skill_id: 'skill-dsa-cp',
-      title: 'Dynamic Programming Patterns',
-      description: 'Knapsack 0/1, LCS, LIS, coin change, grid memoization, bitmask DP foundations',
-      step_order: 3,
-      resource_link: 'https://leetcode.com/explore/'
-    },
-    {
-      id: 'step-dsa-4',
-      skill_id: 'skill-dsa-cp',
-      title: 'Number Theory & Combinatorics',
-      description: 'Sieve of Eratosthenes, GCD/LCM, modular arithmetic, fast exponentiation, combinations',
-      step_order: 4,
-      resource_link: 'https://codeforces.com/edu/courses'
-    }
-  ],
-  'skill-cpp-cp': [
-    {
-      id: 'step-cpp-1',
-      skill_id: 'skill-cpp-cp',
-      title: 'Modern C++ & Standard Template Library',
-      description: 'std::vector, std::set, std::map, std::priority_queue, iterators, fast I/O setup',
-      step_order: 1,
-      resource_link: 'https://en.cppreference.com/w/cpp'
-    },
-    {
-      id: 'step-cpp-2',
-      skill_id: 'skill-cpp-cp',
-      title: 'STL Algorithms & Custom Comparators',
-      description: 'std::sort, std::lower_bound, std::upper_bound, lambda comparators, structs for CP',
-      step_order: 2,
-      resource_link: 'https://usaco.guide/bronze/intro-complete'
-    },
-    {
-      id: 'step-cpp-3',
-      skill_id: 'skill-cpp-cp',
-      title: 'Bitwise Tricks & Memory Efficiency',
-      description: 'Bit manipulation (__builtin_clz, popcount), bitmask representation, competitive template',
-      step_order: 3,
-      resource_link: 'https://cp-algorithms.com/algebra/bit-manipulation.html'
-    }
-  ],
-  'skill-flutter': [
-    {
-      id: 'step-fl-1',
-      skill_id: 'skill-flutter',
-      title: 'Dart Language & Widget Tree',
-      description: 'Stateless vs Stateful widgets, Scaffold, Container, Column/Row, ListView.builder',
-      step_order: 1,
-      resource_link: 'https://flutter.dev/docs'
-    },
-    {
-      id: 'step-fl-2',
-      skill_id: 'skill-flutter',
-      title: 'State Management (Provider/Riverpod)',
-      description: 'State lifecycle, ChangeNotifier, context.watch/read, reactive UI rebuilds',
-      step_order: 2,
-      resource_link: 'https://docs.flutter.dev/data-and-backend/state-mgmt/intro'
-    },
-    {
-      id: 'step-fl-3',
-      skill_id: 'skill-flutter',
-      title: 'Networking, REST APIs & Storage',
-      description: 'http/dio packages, JSON serialization with json_serializable, shared_preferences',
-      step_order: 3,
-      resource_link: 'https://flutter.dev/docs/cookbook/networking/fetch-data'
-    },
-    {
-      id: 'step-fl-4',
-      skill_id: 'skill-flutter',
-      title: 'Navigation 2.0 & App Release',
-      description: 'go_router, animations, themes, asset management, building APK / App Bundle',
-      step_order: 4,
-      resource_link: 'https://docs.flutter.dev/deployment/android'
-    }
-  ],
-  'skill-react-native': [
-    {
-      id: 'step-rn-1',
-      skill_id: 'skill-react-native',
-      title: 'Expo Setup & Core Components',
-      description: 'View, Text, Image, ScrollView, FlatList, StyleSheet styling & flexbox layout',
-      step_order: 1,
-      resource_link: 'https://reactnative.dev/docs/getting-started'
-    },
-    {
-      id: 'step-rn-2',
-      skill_id: 'skill-react-native',
-      title: 'React Navigation & Gestures',
-      description: 'Native Stack Navigator, Bottom Tabs Navigator, drawer menus, safe area insets',
-      step_order: 2,
-      resource_link: 'https://reactnavigation.org/'
-    },
-    {
-      id: 'step-rn-3',
-      skill_id: 'skill-react-native',
-      title: 'AsyncStorage & Device APIs',
-      description: 'Local storage, expo-camera, expo-notifications, async API data fetching & error boundaries',
-      step_order: 3,
-      resource_link: 'https://docs.expo.dev/'
+      resource_link: 'https://www.postgresql.org/docs/current/indexes.html'
     }
   ]
 };
 
 export const initialBadges: Badge[] = [
   {
-    id: 'badge-1',
-    name: 'First step',
-    description: 'Completed your first skill',
-    icon_symbol: '★',
-    bg_color: '#fdcb6e',
-    criteria_type: 'first_skill',
+    id: 'badge-novice',
+    name: 'First Step',
+    description: 'Complete your first skill roadmap challenge',
+    icon_symbol: '🌱',
+    bg_color: '#00b894',
+    criteria_type: 'first_challenge',
     unlocked: true
   },
   {
-    id: 'badge-2',
-    name: '5-day streak',
-    description: 'Stayed active 5 days straight',
+    id: 'badge-streak-5',
+    name: 'Consistency Star',
+    description: 'Maintain a 5-day active learning streak',
     icon_symbol: '🔥',
-    bg_color: '#a29bfe',
+    bg_color: '#e17055',
     criteria_type: 'streak_5',
-    unlocked: true
-  },
-  {
-    id: 'badge-3',
-    name: 'Skill collector',
-    description: 'Complete 5 skills to unlock',
-    icon_symbol: '🔒',
-    bg_color: '#b2bec3',
-    criteria_type: 'skills_5',
     unlocked: false
   },
   {
-    id: 'badge-4',
-    name: 'Speed Demon',
-    description: 'Finish a skill challenge in under 24 hours',
-    icon_symbol: '⚡',
-    bg_color: '#00b894',
-    criteria_type: 'fast_completion',
-    unlocked: true
-  },
-  {
-    id: 'badge-5',
-    name: 'Top 3 Podium',
-    description: 'Rank among top 3 learners in your batch',
+    id: 'badge-master-3',
+    name: 'Track Master',
+    description: 'Successfully complete 3 skill roadmaps',
     icon_symbol: '🏆',
-    bg_color: '#ff7675',
-    criteria_type: 'top_3',
-    unlocked: true
+    bg_color: '#fdcb6e',
+    criteria_type: 'completions_3',
+    unlocked: false
   },
   {
-    id: 'badge-6',
-    name: 'DIU Champion',
-    description: 'Accumulate over 300 points',
-    icon_symbol: '💎',
+    id: 'badge-elite',
+    name: 'DIU Elite Coder',
+    description: 'Earn 300+ total challenge points',
+    icon_symbol: '⚡',
     bg_color: '#37f0ff',
     criteria_type: 'points_300',
     unlocked: false

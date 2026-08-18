@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Field, Skill, RoadmapStep, Profile } from '../types';
+import { Field, Skill, RoadmapStep } from '../types';
 import { X, Plus, Trash2, Edit2, Check, Save } from 'lucide-react';
 
 interface SkillModalProps {
@@ -147,6 +147,108 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             >
               <Save className="w-4 h-4" />
               {initialData ? 'Update Skill' : 'Create Skill'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+interface FieldModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (fieldData: Partial<Field>) => void;
+  initialData?: Field | null;
+}
+
+export const FieldModal: React.FC<FieldModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialData
+}) => {
+  const [name, setName] = useState(initialData?.name || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [icon, setIcon] = useState(initialData?.icon || '💻');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({
+      id: initialData?.id || `field-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      name: name.trim(),
+      description: description.trim(),
+      icon: icon.trim() || '💻'
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 text-[#8a8ca3] hover:text-[#1a1c2e] p-1 rounded-full hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h3 className="text-lg sm:text-xl font-extrabold text-[#1a1c2e] mb-4 pr-8">
+          {initialData ? 'Edit Field / Category' : 'Add New Field / Category'}
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="field-label">Field Name</label>
+            <input 
+              type="text" 
+              className="field-input" 
+              placeholder="e.g. Artificial Intelligence, Mobile Apps"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="field-label">Description</label>
+            <textarea 
+              className="field-input min-h-[70px]" 
+              placeholder="Brief overview of this field..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="field-label">Icon / Emoji</label>
+            <input 
+              type="text" 
+              className="field-input" 
+              maxLength={4}
+              placeholder="e.g. 🤖, 📱"
+              value={icon}
+              onChange={(e) => setIcon(e.target.value)}
+            />
+          </div>
+
+          <div className="btn-row pt-2">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="btn-ghost"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="btn-primary flex1 flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {initialData ? 'Update Field' : 'Create Field'}
             </button>
           </div>
         </form>

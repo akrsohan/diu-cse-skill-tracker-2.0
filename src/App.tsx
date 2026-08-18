@@ -18,11 +18,13 @@ import {
   initialProfiles
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { LandingPage } from './components/LandingPage';
 import { getMainName } from './lib/nameHelper';
 import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
-import { SkillModal, StepModal } from './components/AdminModals';
+import { SkillModal, FieldModal, StepModal } from './components/AdminModals';
 import { 
   getProfile,
   updateProfile,
@@ -135,7 +137,7 @@ export default function App() {
   // Selected Profile for Public Profile view
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  // Logged-in User Profile
+  // Logged-in User Profile (Default to Sohan Ali Admin for immediate access)
   const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0]);
 
   // Active Challenge (User Progress)
@@ -157,8 +159,10 @@ export default function App() {
   const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [editingField, setEditingField] = useState<Field | null>(null);
 
   // Filter state for Discover
   const [fieldFilter, setFieldFilter] = useState<string | null>(null);
@@ -169,7 +173,7 @@ export default function App() {
   const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>('Batch 55');
 
   // Admin Tab State
-  const [adminTab, setAdminTab] = useState<'users' | 'skills' | 'steps'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'fields' | 'skills' | 'steps'>('users');
 
   // Profile Setup Form State
   const [setupFullName, setSetupFullName] = useState('');
@@ -260,6 +264,11 @@ export default function App() {
         }
         setCurrentUser(profile);
         await refreshAppData(session.user.id);
+        if (!profile.profile_completed) {
+          setCurrentPage('profile-setup');
+        } else if (currentPage === 'login' || currentPage === 'signup') {
+          setCurrentPage('discover');
+        }
       } else {
         await refreshAppData();
       }
@@ -277,9 +286,15 @@ export default function App() {
         }
         setCurrentUser(profile);
         await refreshAppData(session.user.id);
+        if (!profile.profile_completed) {
+          setCurrentPage('profile-setup');
+        } else {
+          setCurrentPage('discover');
+        }
       } else if (event === 'SIGNED_OUT') {
         setActiveProgress(null);
         setUserBadgeIds([]);
+        setCurrentPage('login');
       }
     });
 
@@ -814,6 +829,32 @@ export default function App() {
     }
   };
 
+  const handleSaveField = (fieldData: Partial<Field>) => {
+    if (editingField) {
+      setFields(prev => prev.map(f => f.id === editingField.id ? { ...f, ...fieldData } as Field : f));
+      showToast(`Updated field: ${fieldData.name}`);
+    } else {
+      const newField: Field = {
+        id: fieldData.id || `field-${Date.now()}`,
+        name: fieldData.name || 'New Field',
+        description: fieldData.description || '',
+        icon: fieldData.icon || '💻'
+      };
+      setFields(prev => [...prev, newField]);
+      showToast(`Added new field: ${newField.name}`);
+    }
+    setIsFieldModalOpen(false);
+    setEditingField(null);
+  };
+
+  const handleDeleteField = (fieldId: string) => {
+    const fieldToDelete = fields.find(f => f.id === fieldId);
+    if (confirm(`Are you sure you want to delete category "${fieldToDelete?.name}"?`)) {
+      setFields(prev => prev.filter(f => f.id !== fieldId));
+      showToast(`Field category deleted`);
+    }
+  };
+
   // Admin Add Step
   const handleAddStep = (stepData: Partial<RoadmapStep>) => {
     const newStep: RoadmapStep = {
@@ -845,10 +886,35 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f4f5f8] text-[#1a1c2e] font-sans antialiased">
       
+      {currentUser && currentUser.is_banned && !currentUser.is_admin && (
+        <div className="fixed inset-0 z-[100] bg-[#111322] flex items-center justify-center p-6 text-white font-sans antialiased">
+          <div className="bg-[#1a1c2e] border border-red-500/30 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-red-500/10 rounded-full blur-2xl" />
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-4 ring-red-500/10">
+              <AlertCircle className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl font-black mb-2 text-white">Account Suspended</h1>
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              Your account (<span className="text-[#37f0ff] font-semibold">{currentUser.full_name}</span>) has been banned and suspended by the system administrator. You cannot access SkillTrack resources, roadmaps, or leaderboards until your account is unbanned.
+            </p>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 text-xs text-slate-400 space-y-1">
+              <div>Contact DIU Admin / Support:</div>
+              <div className="text-white font-bold">{ADMIN_EMAIL}</div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-red-600/30 cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1a1c2e] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-white/10 animate-fade-in text-sm font-medium">
-          <div className="w-2 h-2 rounded-full bg-[#00b894] animate-ping" />
+        <div className="fixed bottom-8 right-4 sm:right-6 z-50 bg-[#1a1c2e] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/15 animate-fade-in text-sm font-medium">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#00b894] animate-ping" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -888,113 +954,24 @@ export default function App() {
       {/* PAGE 1 — LOGIN / SIGNUP */}
       {/* ========================================================================= */}
       {(currentPage === 'login' || currentPage === 'signup') && (
-        <div className="page" id="page-login">
-          <div className="page-tag">PAGE 1 — LOGIN / SIGNUP</div>
-          
-          <div className="auth-box shadow-xl">
-            <div className="logo-badge mb-4">DIU CSE</div>
-            <h2>{authMode === 'login' ? 'Welcome back' : 'Create account'}</h2>
-            <p className="subtitle">
-              {authMode === 'login' 
-                ? 'Sign in to access your roadmaps, track challenges and earn points' 
-                : 'Join DIU CSE Skill Tracker & compete on the leaderboards'}
-            </p>
-
-            {authError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAuthSubmit}>
-              {authMode === 'signup' && (
-                <div>
-                  <label className="field-label">Full Name</label>
-                  <input 
-                    type="text" 
-                    className="field-input" 
-                    placeholder="e.g. Md. Sohan Ali"
-                    value={authName}
-                    onChange={(e) => setAuthName(e.target.value)}
-                    required
-                    id="input-auth-name"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="field-label">DIU Student Email</label>
-                <input 
-                  type="email" 
-                  className="field-input" 
-                  placeholder="student@diu.edu.bd"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  required
-                  id="input-auth-email"
-                />
-              </div>
-
-              <div>
-                <label className="field-label">Password</label>
-                <input 
-                  type="password" 
-                  className="field-input" 
-                  placeholder="••••••••"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  required
-                  id="input-auth-password"
-                />
-              </div>
-
-              <button 
-                type="submit" 
-                className="btn-submit hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                disabled={authLoading}
-                id="btn-auth-submit"
-              >
-                {authLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                {authMode === 'login' ? 'Sign In to Portal' : 'Create Account'}
-              </button>
-            </form>
-
-            <div className="divider">or</div>
-
-            <div className="text-center text-xs text-[#8a8ca3]">
-              {authMode === 'login' ? (
-                <>
-                  Don't have an account?{' '}
-                  <span 
-                    onClick={() => {
-                      setAuthMode('signup');
-                      setAuthError(null);
-                    }}
-                    className="text-[#6c5ce7] font-bold cursor-pointer hover:underline"
-                    id="link-switch-to-signup"
-                  >
-                    Sign up now
-                  </span>
-                </>
-              ) : (
-                <>
-                  Already registered?{' '}
-                  <span 
-                    onClick={() => {
-                      setAuthMode('login');
-                      setAuthError(null);
-                    }}
-                    className="text-[#6c5ce7] font-bold cursor-pointer hover:underline"
-                    id="link-switch-to-login"
-                  >
-                    Sign in here
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <LandingPage 
+          authMode={authMode}
+          setAuthMode={setAuthMode}
+          authEmail={authEmail}
+          setAuthEmail={setAuthEmail}
+          authPassword={authPassword}
+          setAuthPassword={setAuthPassword}
+          authName={authName}
+          setAuthName={setAuthName}
+          authLoading={authLoading}
+          authError={authError}
+          handleAuthSubmit={handleAuthSubmit}
+          onForgotPassword={async (email) => {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) throw error;
+            showToast('Password reset email sent successfully!');
+          }}
+        />
       )}
 
       {/* ========================================================================= */}
@@ -2622,7 +2599,7 @@ export default function App() {
               </div>
 
               {/* Admin Tabs */}
-              <div className="admin-tabs">
+              <div className="admin-tabs flex flex-wrap gap-2 mb-4">
                 <div 
                   className={`admin-tab cursor-pointer select-none ${adminTab === 'users' ? 'active' : ''}`}
                   onClick={() => setAdminTab('users')}
@@ -2630,10 +2607,16 @@ export default function App() {
                   Users ({profiles.length})
                 </div>
                 <div 
+                  className={`admin-tab cursor-pointer select-none ${adminTab === 'fields' ? 'active' : ''}`}
+                  onClick={() => setAdminTab('fields')}
+                >
+                  Fields &amp; Categories ({fields.length})
+                </div>
+                <div 
                   className={`admin-tab cursor-pointer select-none ${adminTab === 'skills' ? 'active' : ''}`}
                   onClick={() => setAdminTab('skills')}
                 >
-                  Fields &amp; skills ({skills.length})
+                  Skill Tracks ({skills.length})
                 </div>
                 <div 
                   className={`admin-tab cursor-pointer select-none ${adminTab === 'steps' ? 'active' : ''}`}
@@ -2642,6 +2625,60 @@ export default function App() {
                   Roadmap steps
                 </div>
               </div>
+
+              {/* TAB: FIELDS / CATEGORIES */}
+              {adminTab === 'fields' && (
+                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm font-bold text-[#1a1c2e]">Browse by Field Categories</div>
+                    <button
+                      onClick={() => {
+                        setEditingField(null);
+                        setIsFieldModalOpen(true);
+                      }}
+                      className="px-3.5 py-2 bg-[#6c5ce7] text-white text-xs font-bold rounded-lg hover:opacity-90 flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Field Category
+                    </button>
+                  </div>
+                  <div className="admin-table">
+                    <div className="admin-table-head">
+                      <div>Field Category</div>
+                      <div>Description</div>
+                      <div>Icon</div>
+                      <div>Actions</div>
+                    </div>
+                    {fields.map((f) => (
+                      <div key={f.id} className="admin-table-row">
+                        <div className="font-bold flex items-center gap-2">
+                          <span className="text-lg">{f.icon || '💻'}</span>
+                          {f.name}
+                        </div>
+                        <div className="text-xs text-[#8a8ca3] truncate max-w-xs">{f.description || 'No description'}</div>
+                        <div>{f.icon || '💻'}</div>
+                        <div>
+                          <button 
+                            className="admin-action-btn hover:bg-slate-100"
+                            onClick={() => {
+                              setEditingField(f);
+                              setIsFieldModalOpen(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="admin-action-btn danger hover:bg-red-50"
+                            onClick={() => handleDeleteField(f.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* TAB 1: REAL USERS TABLE */}
               {adminTab === 'users' && (
@@ -2806,6 +2843,23 @@ export default function App() {
         </div>
       )}
 
+      {/* Main Website Footer */}
+      {currentPage !== 'login' && currentPage !== 'signup' && (
+        <Footer 
+          currentUser={currentUser}
+          onNavigate={(page) => {
+            if (page === 'discover') {
+              setDiscoverView('main');
+              setSelectedFieldId(null);
+            }
+            if (page === 'profile') {
+              setSelectedUserId(currentUser.id);
+            }
+            setCurrentPage(page);
+          }}
+        />
+      )}
+
       {/* ========================================================================= */}
       {/* MODALS */}
       {/* ========================================================================= */}
@@ -2848,6 +2902,17 @@ export default function App() {
         onSave={handleSaveSkill}
         fields={fields}
         initialData={editingSkill}
+      />
+
+      {/* Admin Field Add/Edit Modal */}
+      <FieldModal 
+        isOpen={isFieldModalOpen}
+        onClose={() => {
+          setIsFieldModalOpen(false);
+          setEditingField(null);
+        }}
+        onSave={handleSaveField}
+        initialData={editingField}
       />
 
       {/* Admin Step Add Modal */}

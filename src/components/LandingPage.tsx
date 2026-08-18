@@ -1,0 +1,457 @@
+import React, { useState, useEffect } from 'react';
+import { RefreshCcw, AlertCircle } from 'lucide-react';
+
+interface LandingPageProps {
+  authMode: 'login' | 'signup';
+  setAuthMode: (mode: 'login' | 'signup') => void;
+  authEmail: string;
+  setAuthEmail: (email: string) => void;
+  authPassword: string;
+  setAuthPassword: (pass: string) => void;
+  authName: string;
+  setAuthName: (name: string) => void;
+  authLoading: boolean;
+  authError: string | null;
+  handleAuthSubmit: (e: React.FormEvent) => void;
+  onForgotPassword?: (email: string) => Promise<void>;
+}
+
+export const LandingPage: React.FC<LandingPageProps> = ({
+  authMode,
+  setAuthMode,
+  authEmail,
+  setAuthEmail,
+  authPassword,
+  setAuthPassword,
+  authName,
+  setAuthName,
+  authLoading,
+  authError,
+  handleAuthSubmit,
+  onForgotPassword
+}) => {
+  const [formMode, setFormMode] = useState<'login' | 'signup' | 'forgot'>(authMode);
+  const [isResetSent, setIsResetSent] = useState(false);
+
+  useEffect(() => {
+    setFormMode(authMode);
+  }, [authMode]);
+
+  const switchMode = (mode: 'login' | 'signup' | 'forgot') => {
+    setFormMode(mode);
+    if (mode === 'login' || mode === 'signup') {
+      setAuthMode(mode);
+    }
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formMode === 'forgot' && onForgotPassword) {
+      try {
+        await onForgotPassword(authEmail);
+        setIsResetSent(true);
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
+    handleAuthSubmit(e);
+  };
+
+  return (
+    <div className="w-full min-h-screen bg-[#07080d] text-[#e8ecff] flex flex-col items-center justify-center relative p-4 sm:p-6 overflow-hidden select-none font-sans">
+      <style dangerouslySetInnerHTML={{ __html: `
+        :root{
+          --bg:#07080d;
+          --panel:#0d0f18;
+          --cyan:#37f0ff;
+          --violet:#8b5cff;
+          --pink:#ff3d9a;
+          --text:#e8ecff;
+          --muted:#6b7290;
+        }
+
+        .stage{
+          position:relative;
+          width:900px;
+          max-width:94vw;
+          height:580px;
+          border-radius:28px;
+          background:var(--panel);
+          box-shadow:0 40px 100px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.08);
+          overflow:hidden;
+          display:flex;
+          z-index: 10;
+        }
+        .visual{
+          position:relative;
+          width:50%;
+          height:100%;
+          overflow:hidden;
+          transition:transform .9s cubic-bezier(.65,0,.35,1);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        }
+        .visual::before{
+          content:'';
+          position:absolute;inset:-20%;
+          background:
+            radial-gradient(circle at 30% 30%, var(--cyan) 0%, transparent 45%),
+            radial-gradient(circle at 70% 70%, var(--violet) 0%, transparent 50%),
+            radial-gradient(circle at 50% 90%, var(--pink) 0%, transparent 40%);
+          filter:blur(40px) saturate(1.4);
+          animation:blob 10s ease-in-out infinite;
+          opacity:.85;
+        }
+        @keyframes blob{
+          0%,100%{transform:translate(0,0) rotate(0deg) scale(1);}
+          33%{transform:translate(4%,-5%) rotate(8deg) scale(1.08);}
+          66%{transform:translate(-3%,4%) rotate(-6deg) scale(0.96);}
+        }
+        .brand{position:relative;z-index:2;text-align:center;color:#fff;padding:0 30px;}
+        .brand h1{font-size:32px;margin:0 0 10px;letter-spacing:.5px;text-shadow:0 0 30px rgba(55,240,255,.6);font-weight:800;color:#ffffff;}
+        .brand p{color:rgba(255,255,255,.8);font-size:14px;line-height:1.6;max-width:280px;margin:0 auto;}
+
+        .formside{
+          width:50%;
+          height:100%;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          transition:transform .9s cubic-bezier(.65,0,.35,1);
+          padding:30px 24px;
+          overflow-y:auto;
+        }
+        .formside form{width:100%;max-width:320px;}
+        .toggle-title{color:#94a3b8;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;font-weight:700;}
+        .formside h2{color:#ffffff;font-size:28px;margin:0 0 22px;font-weight:800;letter-spacing:-0.5px;}
+        .field{position:relative;margin-bottom:18px;}
+        .field input, .field select{
+          width:100%;padding:14px 16px;
+          background:#141724;border:1.5px solid #2e3452;
+          border-radius:12px;
+          color:#ffffff !important;
+          -webkit-text-fill-color:#ffffff !important;
+          caret-color:#37f0ff;
+          font-size:14px;
+          font-weight:600;
+          outline:none;transition:.25s;
+        }
+        .field input::placeholder{
+          color:#94a3b8;
+          opacity:0.7;
+        }
+        .field input:-webkit-autofill,
+        .field input:-webkit-autofill:hover, 
+        .field input:-webkit-autofill:focus{
+          -webkit-text-fill-color:#ffffff !important;
+          -webkit-box-shadow:0 0 0px 1000px #141724 inset !important;
+          box-shadow:0 0 0px 1000px #141724 inset !important;
+          caret-color:#37f0ff !important;
+          transition:background-color 5000s ease-in-out 0s;
+        }
+        .field input:focus{
+          border-color:var(--cyan);
+          background:#181c2d;
+          box-shadow:0 0 0 3px rgba(55,240,255,.2), 0 0 20px rgba(55,240,255,.3);
+        }
+        .field label{
+          position:absolute;left:16px;top:14px;
+          color:#94a3b8;
+          font-size:13.5px;
+          font-weight:600;
+          pointer-events:none;transition:.2s;background:transparent;
+          text-shadow:0 1px 2px rgba(0,0,0,0.5);
+        }
+        .field input:focus + label, .field input:not(:placeholder-shown) + label{
+          top:-9px;left:12px;font-size:11px;background:#0d0f18;padding:0 6px;color:#37f0ff !important;font-weight:700;border-radius:4px;
+        }
+        .btn{
+          width:100%;padding:14px;border:none;border-radius:12px;
+          background:linear-gradient(90deg,var(--cyan),var(--violet));
+          color:#03040a;font-weight:800;font-size:15px;cursor:pointer;
+          box-shadow:0 10px 30px rgba(139,92,255,.35);
+          transition:transform .2s, box-shadow .2s;
+        }
+        .btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(139,92,255,.5);}
+        .switch{margin-top:20px;text-align:center;color:var(--muted);font-size:13px;}
+        .switch span{color:var(--cyan);cursor:pointer;font-weight:700;}
+        .switch span:hover{text-decoration:underline;}
+
+        /* signup mode: swap sides */
+        .stage.signup .visual{transform:translateX(100%);}
+        .stage.signup .formside{transform:translateX(-100%);}
+        .panel{display:none;}
+        .panel.active{display:block;animation:fadein .5s ease;width:100%;}
+        @keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+        @media (max-width: 768px) {
+          .stage {
+            flex-direction: row;
+            width: 100%;
+            max-width: 100%;
+            height: 520px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.9);
+          }
+          .visual, .formside {
+            width: 50%;
+            height: 100%;
+          }
+          .visual {
+            padding: 12px;
+          }
+          .brand {
+            padding: 0 10px;
+          }
+          .brand h1 {
+            font-size: 18px;
+            margin-bottom: 4px;
+          }
+          .brand p {
+            font-size: 11px;
+            line-height: 1.4;
+            max-width: 100%;
+          }
+          .formside {
+            padding: 16px 12px;
+          }
+          .formside form {
+            max-width: 100%;
+          }
+          .formside h2 {
+            font-size: 20px;
+            margin-bottom: 14px;
+          }
+          .toggle-title {
+            font-size: 10px;
+            margin-bottom: 2px;
+          }
+          .field {
+            margin-bottom: 12px;
+          }
+          .field input {
+            font-size: 13px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            font-weight: 600;
+          }
+          .field label {
+            font-size: 12px;
+            top: 10px;
+            left: 12px;
+            color: #94a3b8;
+            font-weight: 600;
+          }
+          .field input:focus + label, .field input:not(:placeholder-shown) + label {
+            top: -8px;
+            left: 8px;
+            font-size: 9.5px;
+            padding: 0 4px;
+            color: #37f0ff !important;
+          }
+          .btn {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+          }
+          .switch {
+            margin-top: 12px;
+            font-size: 11px;
+          }
+        }
+      ` }} />
+
+      <div className={`stage ${formMode === 'signup' ? 'signup' : ''}`} id="stage">
+        {/* Visual Side */}
+        <div className="visual">
+          <div className="brand">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#37f0ff]/10 text-[#37f0ff] mb-4 border border-[#37f0ff]/30 shadow-lg shadow-[#37f0ff]/20 text-xl font-black">
+              DIU
+            </div>
+            <h1>
+              {formMode === 'signup' ? 'Join DIU CSE SkillTrack' : 'Welcome Back'}
+            </h1>
+            <p>
+              {formMode === 'signup' 
+                ? 'Create your account and track your skill roadmaps today.' 
+                : 'Sign in to pick up right where you left off.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Form Side */}
+        <div className="formside">
+          {/* LOGIN PANEL */}
+          <div className={`panel ${formMode === 'login' ? 'active' : ''}`} id="loginPanel">
+            <div className="toggle-title">DIU CSE Skill Portal</div>
+            <h2>Log in</h2>
+
+            {authError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
+                <AlertCircle size={14} /> <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={onSubmit}>
+              <div className="field">
+                <input 
+                  type="email" 
+                  placeholder=" " 
+                  required 
+                  value={authEmail}
+                  onChange={e => setAuthEmail(e.target.value)}
+                />
+                <label>Email address</label>
+              </div>
+              
+              <div className="field">
+                <input 
+                  type="password" 
+                  placeholder=" " 
+                  required 
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                />
+                <label>Password</label>
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <button 
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <button type="submit" className="btn" disabled={authLoading}>
+                {authLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <RefreshCcw className="animate-spin" size={16} /> Connecting...
+                  </span>
+                ) : (
+                  'Log in'
+                )}
+              </button>
+            </form>
+
+            <div className="switch">
+              New here? <span onClick={() => switchMode('signup')}>Create an account</span>
+            </div>
+          </div>
+
+          {/* SIGNUP PANEL */}
+          <div className={`panel ${formMode === 'signup' ? 'active' : ''}`} id="signupPanel">
+            <div className="toggle-title">DIU CSE Skill Portal</div>
+            <h2>Sign up</h2>
+
+            {authError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
+                <AlertCircle size={14} /> <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={onSubmit}>
+              <div className="field">
+                <input 
+                  type="text" 
+                  placeholder=" " 
+                  required 
+                  value={authName}
+                  onChange={e => setAuthName(e.target.value)}
+                />
+                <label>Full name</label>
+              </div>
+
+              <div className="field">
+                <input 
+                  type="email" 
+                  placeholder=" " 
+                  required 
+                  value={authEmail}
+                  onChange={e => setAuthEmail(e.target.value)}
+                />
+                <label>Email address</label>
+              </div>
+
+              <div className="field">
+                <input 
+                  type="password" 
+                  placeholder=" " 
+                  required 
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                />
+                <label>Password</label>
+              </div>
+
+              <button type="submit" className="btn" disabled={authLoading}>
+                {authLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <RefreshCcw className="animate-spin" size={16} /> Creating account...
+                  </span>
+                ) : (
+                  'Create account'
+                )}
+              </button>
+            </form>
+
+            <div className="switch">
+              Already have an account? <span onClick={() => switchMode('login')}>Log in</span>
+            </div>
+          </div>
+
+          {/* FORGOT PASSWORD PANEL */}
+          <div className={`panel ${formMode === 'forgot' ? 'active' : ''}`} id="forgotPanel">
+            <div className="toggle-title">DIU CSE Skill Portal</div>
+            <h2>Reset Password</h2>
+
+            {authError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
+                <AlertCircle size={14} /> <span>{authError}</span>
+              </div>
+            )}
+
+            {isResetSent && (
+              <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold text-center">
+                📧 Password reset email has been sent! Check your inbox.
+              </div>
+            )}
+
+            <form onSubmit={onSubmit}>
+              <div className="field">
+                <input 
+                  type="email" 
+                  placeholder=" " 
+                  required 
+                  value={authEmail}
+                  onChange={e => setAuthEmail(e.target.value)}
+                />
+                <label>Email address</label>
+              </div>
+
+              <button type="submit" className="btn" disabled={authLoading}>
+                {authLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <RefreshCcw className="animate-spin" size={16} /> Sending...
+                  </span>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </button>
+            </form>
+
+            <div className="switch">
+              Remember your password? <span onClick={() => switchMode('login')}>Back to Log in</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
