@@ -97,6 +97,61 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 
 /**
+ * Helper to convert base64 Data URL to Blob
+ */
+function dataURLtoBlob(dataUrl: string): Blob {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+/**
+ * Upload avatar image to Supabase Storage bucket 'avatars'
+ * Returns the public URL if uploaded, or falls back to optimized data URL
+ */
+export async function uploadAvatarImage(userId: string, imageData: string): Promise<string> {
+  if (!imageData) return '';
+  if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+    return imageData;
+  }
+
+  try {
+    const blob = dataURLtoBlob(imageData);
+    const fileName = `${userId}-${Date.now()}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, blob, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+
+    if (!uploadError) {
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      if (data && data.publicUrl) {
+        return data.publicUrl;
+      }
+    } else {
+      console.warn('Supabase storage upload notice:', uploadError.message);
+    }
+  } catch (err) {
+    console.warn('Supabase storage upload error:', err);
+  }
+
+  // Graceful fallback to optimized base64
+  return imageData;
+}
+
+/**
  * Update an existing user profile in Supabase profiles table
  */
 export async function updateProfile(userId: string, updates: Partial<Profile>): Promise<{ success: boolean; error?: string }> {
@@ -140,15 +195,20 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
     if (updates.longest_streak !== undefined) payload.longest_streak = updates.longest_streak;
     if (updates.is_banned !== undefined) payload.is_banned = updates.is_banned;
 
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
         ...payload
-      });
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase profile update warning:', error);
+    }
 
     return { success: true };
   } catch (err: any) {
+    console.error('Error in updateProfile:', err);
     return { success: true };
   }
 }

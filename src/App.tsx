@@ -36,7 +36,8 @@ import {
   getUserCompletedProgress,
   getAllCompletedProgress,
   getUserBadges,
-  getAdminStats
+  getAdminStats,
+  uploadAvatarImage
 } from './lib/supabaseService';
 import { 
   CheckCircle2, 
@@ -531,13 +532,20 @@ export default function App() {
       return;
     }
 
+    let finalAvatarUrl = currentUser.avatar_url;
+    if (setupAvatarPreview) {
+      finalAvatarUrl = await uploadAvatarImage(currentUser.id, setupAvatarPreview);
+    } else if (setupAvatarPreview === null) {
+      finalAvatarUrl = undefined;
+    }
+
     const updatedProfile: Profile = {
       ...currentUser,
       full_name: setupFullName.trim() || currentUser.full_name,
       department: setupDepartment.trim() || currentUser.department,
       roll_number: setupRoll.trim() || currentUser.roll_number,
       batch_number: setupBatch.trim() || currentUser.batch_number,
-      avatar_url: setupAvatarPreview || currentUser.avatar_url || undefined,
+      avatar_url: finalAvatarUrl,
       fb_link: setupFb.trim() || undefined,
       telegram_link: setupTelegram.trim() || undefined,
       whatsapp_link: setupWhatsapp.trim() || undefined,
@@ -559,13 +567,44 @@ export default function App() {
     await refreshAppData(currentUser.id);
   };
 
-  // Avatar Upload Handler
+  // Avatar Upload Handler with Automatic Optimization
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSetupAvatarPreview(reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Resize & compress to ~256x256 max for instant Supabase syncing
+          const canvas = document.createElement('canvas');
+          const maxDim = 280;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+            setSetupAvatarPreview(optimizedBase64);
+          } else {
+            setSetupAvatarPreview(event.target?.result as string);
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
