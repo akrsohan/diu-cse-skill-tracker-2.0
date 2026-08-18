@@ -70,6 +70,42 @@ import {
   Share2
 } from 'lucide-react';
 
+// Helper to format social contact links into working URLs
+function formatSocialLink(type: 'facebook' | 'telegram' | 'whatsapp', input?: string): string {
+  if (!input || !input.trim()) return '';
+  const val = input.trim();
+  if (val.startsWith('http://') || val.startsWith('https://')) return val;
+
+  if (type === 'facebook') {
+    if (val.startsWith('facebook.com/') || val.startsWith('fb.com/')) return `https://${val}`;
+    const cleaned = val.startsWith('@') ? val.slice(1) : val;
+    return `https://facebook.com/${cleaned}`;
+  }
+
+  if (type === 'telegram') {
+    if (val.startsWith('t.me/')) return `https://${val}`;
+    const cleaned = val.startsWith('@') ? val.slice(1) : val;
+    return `https://t.me/${cleaned}`;
+  }
+
+  if (type === 'whatsapp') {
+    if (val.startsWith('wa.me/')) return `https://${val}`;
+    // If user provided an alphanumeric username / handle
+    if (/[a-zA-Z]/.test(val)) {
+      const cleaned = val.startsWith('@') ? val.slice(1) : val;
+      return `https://wa.me/${cleaned}`;
+    }
+    // If user provided a numeric phone number
+    let digits = val.replace(/[^0-9]/g, '');
+    if (digits.startsWith('01')) {
+      digits = '88' + digits;
+    }
+    return `https://wa.me/${digits}`;
+  }
+
+  return val;
+}
+
 export default function App() {
   // Navigation
   const [currentPage, setCurrentPage] = useState<PageType>('discover');
@@ -1136,21 +1172,31 @@ export default function App() {
                         </label>
                         <div className="input-with-icon-wrap">
                           <Building2 className="icon-leading" />
-                          <select 
+                          <input 
+                            type="text"
+                            list="dept-datalist-options"
                             className="input-styled"
+                            placeholder="e.g. Department of CSE, SWE, EEE..."
                             value={setupDepartment}
                             onChange={(e) => setSetupDepartment(e.target.value)}
                             required
-                            id="select-setup-dept"
-                          >
-                            <option value="">Select Department</option>
-                            <option value="CSE">Department of CSE</option>
-                            <option value="SWE">Department of SWE</option>
-                            <option value="CIS">Department of CIS</option>
-                            <option value="EEE">Department of EEE</option>
-                          </select>
-                          <ChevronRight className="icon-trailing-arrow w-4 h-4 rotate-90" />
+                            id="input-setup-dept"
+                          />
+                          <datalist id="dept-datalist-options">
+                            <option value="Department of CSE" />
+                            <option value="Department of SWE" />
+                            <option value="Department of CIS" />
+                            <option value="Department of EEE" />
+                            <option value="Department of Civil Engineering" />
+                            <option value="Department of Pharmacy" />
+                            <option value="Department of BBA" />
+                            <option value="Department of English" />
+                            <option value="Department of Journalism" />
+                          </datalist>
                         </div>
+                        <p className="text-[11px] text-[#8a8ca3] mt-1">
+                          You can choose from suggestions or type your custom department name.
+                        </p>
                       </div>
 
                       <div>
@@ -1159,30 +1205,38 @@ export default function App() {
                         </label>
                         <div className="input-with-icon-wrap">
                           <Hash className="icon-leading" />
-                          <select 
+                          <input 
+                            type="text"
+                            list="batch-datalist-options"
                             className="input-styled"
+                            placeholder="e.g. Batch 55, Batch 56..."
                             value={setupBatch}
                             onChange={(e) => setSetupBatch(e.target.value)}
                             required
-                            id="select-setup-batch"
-                          >
-                            <option value="">Select Batch</option>
-                            <option value="Batch 50">Batch 50</option>
-                            <option value="Batch 51">Batch 51</option>
-                            <option value="Batch 52">Batch 52</option>
-                            <option value="Batch 53">Batch 53</option>
-                            <option value="Batch 54">Batch 54</option>
-                            <option value="Batch 55">Batch 55</option>
-                            <option value="Batch 56">Batch 56</option>
-                            <option value="Batch 57">Batch 57</option>
-                            <option value="Batch 58">Batch 58</option>
-                            <option value="Batch 59">Batch 59</option>
-                            <option value="Batch 60">Batch 60</option>
-                            <option value="Batch 61">Batch 61</option>
-                            <option value="Batch 62">Batch 62</option>
-                          </select>
-                          <ChevronRight className="icon-trailing-arrow w-4 h-4 rotate-90" />
+                            id="input-setup-batch"
+                          />
+                          <datalist id="batch-datalist-options">
+                            <option value="Batch 50" />
+                            <option value="Batch 51" />
+                            <option value="Batch 52" />
+                            <option value="Batch 53" />
+                            <option value="Batch 54" />
+                            <option value="Batch 55" />
+                            <option value="Batch 56" />
+                            <option value="Batch 57" />
+                            <option value="Batch 58" />
+                            <option value="Batch 59" />
+                            <option value="Batch 60" />
+                            <option value="Batch 61" />
+                            <option value="Batch 62" />
+                            <option value="Batch 63" />
+                            <option value="Batch 64" />
+                            <option value="Batch 65" />
+                          </datalist>
                         </div>
+                        <p className="text-[11px] text-[#8a8ca3] mt-1">
+                          Type your batch (e.g. Batch 55) for cohort ranking.
+                        </p>
                       </div>
                     </div>
 
@@ -1215,7 +1269,7 @@ export default function App() {
                       <div>
                         <h3 className="text-sm font-bold text-[#1a1c2e]">Peer Contact &amp; Social Links</h3>
                         <p className="text-[11px] text-[#8a8ca3]">
-                          Provide at least one channel so study peers and faculty can reach you.
+                          Provide at least one channel so study peers and faculty can reach you directly.
                         </p>
                       </div>
                     </div>
@@ -1230,7 +1284,7 @@ export default function App() {
                         <input 
                           type="text" 
                           className="input-styled" 
-                          placeholder="e.g. https://facebook.com/username or @username"
+                          placeholder="e.g. facebook.com/sohanali or @sohanali"
                           value={setupFb}
                           onChange={(e) => setSetupFb(e.target.value)}
                           id="input-setup-fb"
@@ -1242,66 +1296,68 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
-                          Telegram Handle
+                          Telegram Handle / Username
                         </label>
                         <div className="input-with-icon-wrap">
                           <MessageSquare className="icon-leading text-sky-500" />
                           <input 
                             type="text" 
                             className="input-styled" 
-                            placeholder="@username or t.me/..."
+                            placeholder="e.g. @sohanali or t.me/sohanali"
                             value={setupTelegram}
                             onChange={(e) => setSetupTelegram(e.target.value)}
                             id="input-setup-telegram"
                           />
                         </div>
+                        <p className="text-[10px] text-[#8a8ca3] mt-1">Accepts username, @handle or link</p>
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-[#1e293b] mb-1.5">
-                          WhatsApp Number
+                          WhatsApp Number or Username
                         </label>
                         <div className="input-with-icon-wrap">
                           <Phone className="icon-leading text-emerald-500" />
                           <input 
                             type="text" 
                             className="input-styled" 
-                            placeholder="+8801700000000"
+                            placeholder="e.g. +8801700000000 or @username / wa.me/..."
                             value={setupWhatsapp}
                             onChange={(e) => setSetupWhatsapp(e.target.value)}
                             id="input-setup-whatsapp"
                           />
                         </div>
+                        <p className="text-[10px] text-[#8a8ca3] mt-1">Accepts phone number, username or link</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Sticky / Action Footer */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-                    <div className="text-xs text-[#8a8ca3] text-center sm:text-left">
-                      Changes will be saved immediately to your cloud profile.
+                  {/* Prominent, Centered & Large Action Buttons */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 sm:p-8 mb-20 flex flex-col items-center justify-center gap-5 shadow-sm text-center">
+                    <div className="text-xs sm:text-sm text-[#64748b] font-medium">
+                      Changes will be saved immediately and synced live to your Supabase cloud profile.
                     </div>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex flex-wrap items-center justify-center gap-4 w-full sm:w-auto">
                       {currentUser.profile_completed && (
                         <button
                           type="button"
                           onClick={() => setCurrentPage('profile')}
-                          className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:bg-[#f8fafc] transition-colors"
+                          className="min-w-[160px] px-8 py-4 rounded-2xl border-2 border-[#e2e8f0] text-base font-bold text-[#475569] hover:bg-[#f8fafc] hover:border-[#cbd5e1] hover:text-[#1e293b] transition-all cursor-pointer shadow-xs active:scale-98"
                         >
                           Discard
                         </button>
                       )}
                       <button 
                         type="submit" 
-                        className="flex-1 sm:flex-none px-6 py-2.5 bg-[#6c5ce7] hover:bg-[#5b4cc4] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#6c5ce7]/25 flex items-center justify-center gap-2 cursor-pointer"
+                        className="min-w-[220px] px-10 py-4 bg-[#6c5ce7] hover:bg-[#5b4cc4] text-white text-base font-extrabold rounded-2xl transition-all shadow-xl shadow-[#6c5ce7]/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
                         disabled={setupLoading}
                         id="btn-save-profile-setup"
                       >
                         {setupLoading ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Save className="w-4 h-4" />
+                          <Save className="w-6 h-6" />
                         )}
                         <span>{currentUser.profile_completed ? 'Save Changes' : 'Save & Enter Skill Hub →'}</span>
                       </button>
@@ -2429,7 +2485,7 @@ export default function App() {
                   <div className="social-links-row">
                     {targetProfile.fb_link && (
                       <a 
-                        href={`https://${targetProfile.fb_link.replace(/^https?:\/\//, '')}`}
+                        href={formatSocialLink('facebook', targetProfile.fb_link)}
                         target="_blank"
                         rel="noreferrer"
                         className="social-icon hover:scale-105 transition-transform" 
@@ -2441,7 +2497,7 @@ export default function App() {
                     )}
                     {targetProfile.telegram_link && (
                       <a 
-                        href={`https://${targetProfile.telegram_link.replace(/^https?:\/\//, '')}`}
+                        href={formatSocialLink('telegram', targetProfile.telegram_link)}
                         target="_blank"
                         rel="noreferrer"
                         className="social-icon hover:scale-105 transition-transform" 
@@ -2453,7 +2509,7 @@ export default function App() {
                     )}
                     {targetProfile.whatsapp_link && (
                       <a 
-                        href={`https://wa.me/${targetProfile.whatsapp_link.replace(/[^0-9]/g, '')}`}
+                        href={formatSocialLink('whatsapp', targetProfile.whatsapp_link)}
                         target="_blank"
                         rel="noreferrer"
                         className="social-icon hover:scale-105 transition-transform" 
