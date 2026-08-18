@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PageType, Profile } from '../types';
-import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, Compass, LayoutDashboard, Trophy } from 'lucide-react';
+import { getMainName } from '../lib/nameHelper';
+import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, Compass, LayoutDashboard, Trophy, Monitor } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: PageType;
@@ -119,87 +120,129 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="relative shrink-0" ref={dropdownRef}>
           <button 
             type="button"
-            className="flex items-center gap-3 bg-[#0e101a] hover:bg-[#1f233a] border border-white/10 rounded-full pl-2 pr-4 py-2 transition-all shadow-md group focus:outline-none focus:ring-2 focus:ring-[#6c5ce7] cursor-pointer"
+            className="flex items-center gap-2.5 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] text-white border border-white/20 rounded-full pl-1.5 pr-4 py-1.5 sm:py-2 transition-all shadow-lg shadow-blue-600/30 group focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
             onClick={() => setDropdownOpen(!dropdownOpen)}
             id="navbar-user-avatar-btn"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
             {/* Avatar Icon */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6c5ce7] via-[#8b5cff] to-[#37f0ff] text-white flex items-center justify-center font-bold text-sm shadow-inner ring-2 ring-white/10 group-hover:scale-105 transition-transform">
-              {getInitials(currentUser.full_name)}
-            </div>
+            {currentUser.avatar_url ? (
+              <img 
+                src={currentUser.avatar_url} 
+                alt={currentUser.full_name} 
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-white/50 shadow-inner group-hover:scale-105 transition-transform" 
+              />
+            ) : (
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-inner ring-2 ring-white/40 group-hover:scale-105 transition-transform">
+                {getInitials(currentUser.full_name)}
+              </div>
+            )}
             
-            <div className="hidden sm:flex flex-col items-start text-left">
-              <span className="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
-                {currentUser.full_name.split(' ')[0]}
-                {currentUser.profile_completed && (
-                  <span className="w-2 h-2 rounded-full bg-[#00b894]"></span>
-                )}
-              </span>
-              <span className="text-xs text-[#37f0ff] font-bold mt-0.5">
-                {currentUser.points} pts
-              </span>
-            </div>
+            {/* Name */}
+            <span className="text-sm font-black tracking-wide text-white uppercase leading-none select-none">
+              {getMainName(currentUser.full_name)}
+            </span>
 
-            <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-white/90 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Spacious, Beautiful, Modern Dropdown Menu */}
+          {/* Clean Modern White Dropdown Menu (Matches Reference) */}
           {dropdownOpen && (
             <div 
-              className="absolute right-0 mt-3 w-[calc(100vw-32px)] max-w-[320px] sm:w-80 bg-[#161828] border border-[#2b2f4c] rounded-2xl shadow-2xl p-3 sm:p-3.5 z-50 text-slate-200 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
+              className="absolute right-0 mt-3 w-[calc(100vw-32px)] max-w-[320px] sm:w-[320px] bg-white border border-slate-100 rounded-[28px] shadow-2xl shadow-slate-950/25 p-5 sm:p-6 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150"
               id="navbar-user-dropdown"
             >
-              {/* User Profile Header Card */}
-              <div className="p-3.5 bg-gradient-to-b from-[#20233b] to-[#1a1c30] rounded-xl border border-white/5 mb-3 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6c5ce7] to-[#37f0ff] text-white flex items-center justify-center font-extrabold text-base shadow-md ring-2 ring-white/20 shrink-0">
-                    {getInitials(currentUser.full_name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-white text-base leading-snug flex items-center gap-1.5 truncate">
-                      <span className="truncate">{currentUser.full_name}</span>
-                      {currentUser.profile_completed && (
-                        <CheckCircle className="w-4 h-4 text-[#00b894] shrink-0" title="Profile verified" />
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                      {currentUser.department} {currentUser.batch_number ? `· ${currentUser.batch_number}` : ''}
-                    </div>
-                    {currentUser.roll_number && (
-                      <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                        ID: {currentUser.roll_number}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Stats badges */}
-                <div className="mt-3.5 pt-3 border-t border-white/10 grid grid-cols-2 gap-2">
-                  <div className="bg-[#121422]/80 px-3 py-2 rounded-lg flex items-center gap-2 border border-white/5">
-                    <Zap className="w-4 h-4 text-[#37f0ff] shrink-0" />
-                    <div>
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Points</div>
-                      <div className="text-sm font-extrabold text-[#37f0ff] leading-none mt-0.5">{currentUser.points}</div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#121422]/80 px-3 py-2 rounded-lg flex items-center gap-2 border border-white/5">
-                    <Flame className="w-4 h-4 text-[#ff7675] shrink-0" />
-                    <div>
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Streak</div>
-                      <div className="text-sm font-extrabold text-[#ff7675] leading-none mt-0.5">{currentUser.current_streak}d</div>
-                    </div>
-                  </div>
+              {/* User Profile Header */}
+              <div className="pb-4 border-b border-slate-100">
+                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight lowercase truncate">
+                  {getMainName(currentUser.full_name)}
+                </h3>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 font-mono truncate">
+                  {currentUser.email || `${currentUser.full_name.toLowerCase().replace(/\s+/g, '')}@gmail.com`}
+                </p>
+                
+                {/* Badges row: ADMIN, VERIFIED */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  {currentUser.is_admin && (
+                    <span className="px-3 py-1 rounded-full bg-[#eff6ff] border border-[#bfdbfe] text-[#2563eb] text-[11px] font-black uppercase tracking-wider shadow-2xs">
+                      ADMIN
+                    </span>
+                  )}
+                  {currentUser.profile_completed ? (
+                    <span className="px-3 py-1 rounded-full bg-[#ecfdf5] border border-[#a7f3d0] text-[#059669] text-[11px] font-black uppercase tracking-wider shadow-2xs">
+                      VERIFIED
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-bold uppercase tracking-wider">
+                      SETUP REQUIRED
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Navigation Actions */}
-              <div className="space-y-1">
+              {/* Menu items */}
+              <div className="py-3 space-y-1.5">
+                {/* My Dashboard */}
                 <button 
                   type="button"
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl hover:bg-[#252945] text-slate-200 hover:text-white transition-all text-left group cursor-pointer"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
+                  onClick={() => {
+                    setCurrentPage('dashboard');
+                    setDropdownOpen(false);
+                  }}
+                  id="dropdown-dashboard"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                    <Monitor className="w-5 h-5" />
+                  </div>
+                  <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                    My Dashboard
+                  </div>
+                </button>
+
+                {/* Leaderboard */}
+                <button 
+                  type="button"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
+                  onClick={() => {
+                    setCurrentPage('leaderboard');
+                    setDropdownOpen(false);
+                  }}
+                  id="dropdown-leaderboard"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                    Leaderboard
+                  </div>
+                </button>
+
+                {/* Admin Portal (if admin) */}
+                {currentUser.is_admin && (
+                  <button 
+                    type="button"
+                    className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
+                    onClick={() => {
+                      setCurrentPage('admin');
+                      setDropdownOpen(false);
+                    }}
+                    id="dropdown-admin-portal"
+                  >
+                    <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                      <Settings className="w-5 h-5" />
+                    </div>
+                    <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                      Admin Portal
+                    </div>
+                  </button>
+                )}
+
+                {/* My Public Profile */}
+                <button 
+                  type="button"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
                     if (onSelectUserForProfile) onSelectUserForProfile(currentUser.id);
                     setCurrentPage('profile');
@@ -207,74 +250,53 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   id="dropdown-my-profile"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#6c5ce7]/15 text-[#a29bfe] flex items-center justify-center group-hover:bg-[#6c5ce7] group-hover:text-white transition-colors shrink-0">
-                    <User className="w-4 h-4" />
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                    <User className="w-5 h-5" />
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-slate-200 group-hover:text-white text-xs sm:text-sm">My Public Profile</div>
-                    <div className="text-[11px] text-slate-400">View your earned badges and skills</div>
+                  <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                    My Public Profile
                   </div>
                 </button>
 
+                {/* Edit Profile Setup */}
                 <button 
                   type="button"
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl hover:bg-[#252945] text-slate-200 hover:text-white transition-all text-left group cursor-pointer"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
                   onClick={() => {
                     setCurrentPage('profile-setup');
                     setDropdownOpen(false);
                   }}
                   id="dropdown-edit-profile"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#fdcb6e]/15 text-[#fdcb6e] flex items-center justify-center group-hover:bg-[#fdcb6e] group-hover:text-[#1a1c2e] transition-colors shrink-0">
-                    <Settings className="w-4 h-4" />
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                    <Settings className="w-5 h-5" />
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-slate-200 group-hover:text-white text-xs sm:text-sm">Edit Profile Setup</div>
-                    <div className="text-[11px] text-slate-400">Update socials, batch &amp; avatar</div>
+                  <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                    Edit Profile Setup
                   </div>
                 </button>
-
-                {currentUser.is_admin && (
-                  <button 
-                    type="button"
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl hover:bg-purple-600/20 text-purple-200 hover:text-white transition-all text-left group cursor-pointer"
-                    onClick={() => {
-                      setCurrentPage('admin');
-                      setDropdownOpen(false);
-                    }}
-                    id="dropdown-admin-panel"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors shrink-0">
-                      <Shield className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-purple-200 group-hover:text-white text-xs sm:text-sm">Admin Dashboard</div>
-                      <div className="text-[11px] text-purple-300/70">Manage skills, steps &amp; users</div>
-                    </div>
-                  </button>
-                )}
               </div>
 
               {/* Divider */}
-              <div className="my-2 border-t border-[#2b2f4c]"></div>
-
-              {/* Sign Out */}
-              <button 
-                type="button"
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl hover:bg-red-500/15 text-red-400 hover:text-red-300 transition-all text-left group cursor-pointer"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  onSignOut();
-                }}
-                id="dropdown-signout"
-              >
-                <div className="w-8 h-8 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors shrink-0">
-                  <LogOut className="w-4 h-4" />
-                </div>
-                <div className="flex-1 font-semibold text-xs sm:text-sm">
-                  Sign Out
-                </div>
-              </button>
+              <div className="pt-2 border-t border-slate-100">
+                {/* LOG OUT */}
+                <button 
+                  type="button"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-red-50/60 transition-all text-left group cursor-pointer"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    onSignOut();
+                  }}
+                  id="dropdown-signout"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-100 group-hover:text-red-600 transition-colors shrink-0">
+                    <LogOut className="w-5 h-5" />
+                  </div>
+                  <div className="font-black text-red-600 text-sm sm:text-base tracking-wider uppercase">
+                    LOG OUT
+                  </div>
+                </button>
+              </div>
             </div>
           )}
         </div>

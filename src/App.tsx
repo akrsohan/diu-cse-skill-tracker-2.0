@@ -24,6 +24,7 @@ import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, StepModal } from './components/AdminModals';
+import { getMainName } from './lib/nameHelper';
 import { 
   CheckCircle2, 
   Clock, 
@@ -1091,7 +1092,7 @@ export default function App() {
                   <div>
                     <div style={{ fontSize: '13px', opacity: 0.85 }}>Welcome back</div>
                     <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>
-                      {currentUser.full_name.split(' ')[0]}, ready to level up?
+                      {getMainName(currentUser.full_name)}, ready to level up?
                     </div>
                   </div>
                   <div className="hero-stats">
@@ -1294,11 +1295,11 @@ export default function App() {
                           <button
                             type="button"
                             onClick={handleCompleteActiveChallenge}
-                            className="w-full sm:w-auto px-6 py-3 bg-emerald-400 hover:bg-emerald-300 text-[#1a1c2e] font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-102"
+                            className="w-full sm:w-auto px-7 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#e5a50a] via-[#d97706] to-[#b45309] hover:from-[#d97706] hover:to-[#92400e] text-[#161828] hover:text-white font-black rounded-2xl text-sm sm:text-base shadow-2xl shadow-amber-950/60 ring-4 ring-amber-400/40 border-2 border-amber-300 transition-all flex items-center justify-center gap-2.5 cursor-pointer hover:scale-103 active:scale-98"
                             id="btn-complete-challenge-discover"
                           >
-                            <CheckCircle2 className="w-5 h-5 text-[#1a1c2e]" />
-                            Mark as complete (+10 pts)
+                            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+                            <span>Mark as Complete <span className="font-extrabold text-white bg-black/30 px-2 py-0.5 rounded-lg ml-1 text-xs sm:text-sm">(+10 pts)</span></span>
                           </button>
                         </div>
 
@@ -1842,11 +1843,14 @@ export default function App() {
                       </div>
                       <button 
                         onClick={handleCompleteActiveChallenge}
-                        className="flex-1 py-2.5 sm:py-3 px-4 bg-white text-[#e17055] font-black rounded-xl text-xs sm:text-sm shadow-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-101"
+                        className="flex-1 py-3 sm:py-3.5 px-5 bg-white text-[#1a1c2e] hover:text-[#00b894] font-black rounded-2xl text-sm sm:text-base shadow-2xl shadow-black/30 hover:shadow-emerald-500/20 ring-4 ring-white/60 hover:ring-white transition-all flex items-center justify-center gap-2.5 cursor-pointer hover:scale-103 active:scale-98 relative group overflow-hidden"
                         id="btn-mark-challenge-complete"
                       >
-                        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#00b894]" />
-                        Mark as complete (+10 pts)
+                        <span className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 group-hover:text-white" />
+                        </span>
+                        <span className="tracking-tight">Mark as Complete <span className="text-[#00b894] font-black">(+10 Pts)</span></span>
+                        <span className="inline-block text-amber-500 text-base group-hover:rotate-12 transition-transform">✨</span>
                       </button>
                     </div>
                   </div>
