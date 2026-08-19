@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Profile, UserProgress, Badge, Skill, RoadmapStep } from '../types';
+import { Profile, UserProgress, Badge, Skill, RoadmapStep, FeedbackItem } from '../types';
 import { ADMIN_EMAIL, initialBadges, initialSkills, initialProfiles, initialCompletedSkills } from '../data/mockData';
 
 // Local storage keys for resilient caching
@@ -781,3 +781,147 @@ export async function getAdminStats(): Promise<{
     totalCompletions: 312
   };
 }
+
+/**
+ * Submit user feedback to public.feedback
+ */
+export async function submitFeedback(message: string): Promise<{ success: boolean; data?: FeedbackItem; error?: string }> {
+  const trimmedMessage = (message || '').trim();
+  if (!trimmedMessage) {
+    return { success: false, error: 'Feedback message cannot be empty.' };
+  }
+
+  if (trimmedMessage.length > 1000) {
+    return { success: false, error: 'Feedback message cannot exceed 1000 characters.' };
+  }
+
+  try {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) {
+      return { success: false, error: 'You must be logged in to send feedback.' };
+    }
+
+    const user = authData.user;
+    const userEmail = user.email || '';
+
+    const { data, error } = await supabase
+      .from('feedback')
+      .insert({
+        user_id: user.id,
+        user_email: userEmail,
+        message: trimmedMessage,
+        status: 'unread'
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[Supabase submitFeedback Error]:', error);
+      return { success: false, error: error.message || 'Failed to submit feedback. Please try again.' };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: data.id,
+        user_id: data.user_id,
+        user_email: data.user_email,
+        message: data.message,
+        status: data.status,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      }
+    };
+  } catch (err: any) {
+    console.error('[Supabase submitFeedback Exception]:', err);
+    return { success: false, error: err?.message || 'An unexpected error occurred while submitting feedback.' };
+  }
+}
+
+/**
+ * Fetch feedback history for a specific user
+ */
+export async function getUserFeedback(userId: string): Promise<FeedbackItem[]> {
+  if (!userId) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[Supabase getUserFeedback error]:', error.message);
+      return [];
+    }
+
+    return (data || []).map((item: any) => ({
+      id: item.id,
+      user_id: item.user_id,
+      user_email: item.user_email,
+      message: item.message,
+      status: item.status,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    }));
+  } catch (err) {
+    console.error('[Supabase getUserFeedback Exception]:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch all feedback entries for Admin Portal
+ */
+export async function getAllFeedback(): Promise<FeedbackItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[Supabase getAllFeedback error]:', error.message);
+      return [];
+    }
+
+    return (data || []).map((item: any) => ({
+      id: item.id,
+      user_id: item.user_id,
+      user_email: item.user_email,
+      message: item.message,
+      status: item.status,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    }));
+  } catch (err) {
+    console.error('[Supabase getAllFeedback Exception]:', err);
+    return [];
+  }
+}
+
+/**
+ * Mark a feedback item as read (Admin only)
+ */
+export async function markFeedbackAsRead(feedbackId: string): Promise<{ success: boolean; error?: string }> {
+  if (!feedbackId) return { success: false, error: 'Feedback ID is required.' };
+
+  try {
+    const { error } = await supabase
+      .from('feedback')
+      .update({ status: 'read', updated_at: new Date().toISOString() })
+      .eq('id', feedbackId);
+
+    if (error) {
+      console.error('[Supabase markFeedbackAsRead error]:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Supabase markFeedbackAsRead Exception]:', err);
+    return { success: false, error: err?.message || 'Failed to update feedback status.' };
+  }
+}
+

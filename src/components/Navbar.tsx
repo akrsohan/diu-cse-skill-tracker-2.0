@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PageType, Profile } from '../types';
 import { getMainName } from '../lib/nameHelper';
-import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, Compass, LayoutDashboard, Trophy, Monitor } from 'lucide-react';
+import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, Compass, LayoutDashboard, Trophy, Monitor, MessageSquare } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: PageType;
@@ -10,6 +10,8 @@ interface NavbarProps {
   currentUser: Profile;
   onSignOut: () => void;
   onSelectUserForProfile?: (userId: string) => void;
+  onOpenSendFeedback?: () => void;
+  onOpenMyFeedback?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,7 +20,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   currentUser,
   onSignOut,
-  onSelectUserForProfile
+  onSelectUserForProfile,
+  onOpenSendFeedback,
+  onOpenMyFeedback
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -283,6 +287,47 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
                     Edit Profile Setup
+                  </div>
+                </button>
+
+                {/* Send Feedback */}
+                <button 
+                  type="button"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-purple-50 text-slate-900 transition-all text-left group cursor-pointer"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    if (onOpenSendFeedback) onOpenSendFeedback();
+                  }}
+                  id="dropdown-send-feedback"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-purple-50 text-[#6c5ce7] flex items-center justify-center group-hover:bg-purple-100 transition-colors shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                      Send Feedback
+                    </span>
+                    <span className="text-[11px] text-[#8a8ca3] font-medium">
+                      Share suggestions or ideas
+                    </span>
+                  </div>
+                </button>
+
+                {/* My Feedback History */}
+                <button 
+                  type="button"
+                  className="w-full flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    if (onOpenMyFeedback) onOpenMyFeedback();
+                  }}
+                  id="dropdown-my-feedback"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 group-hover:text-slate-900 transition-colors shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                    My Feedback
                   </div>
                 </button>
               </div>

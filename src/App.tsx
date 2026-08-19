@@ -27,6 +27,9 @@ import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, FieldModal, StepModal } from './components/AdminModals';
 import { PasswordRecoveryModal } from './components/PasswordRecoveryModal';
 import { AuthLoadingScreen } from './components/AuthLoadingScreen';
+import { FeedbackModal } from './components/FeedbackModal';
+import { UserFeedbackHistoryModal } from './components/UserFeedbackHistoryModal';
+import { AdminFeedbackSection } from './components/AdminFeedbackSection';
 import { 
   getProfile,
   updateProfile,
@@ -41,7 +44,8 @@ import {
   getAllCompletedProgress,
   getUserBadges,
   getAdminStats,
-  uploadAvatarImage
+  uploadAvatarImage,
+  getAllFeedback
 } from './lib/supabaseService';
 import { 
   CheckCircle2, 
@@ -198,7 +202,11 @@ export default function App() {
   const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>('Batch 55');
 
   // Admin Tab State
-  const [adminTab, setAdminTab] = useState<'users' | 'fields' | 'skills' | 'steps'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'fields' | 'skills' | 'steps' | 'feedback'>('users');
+
+  // Feedback Modals
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isMyFeedbackModalOpen, setIsMyFeedbackModalOpen] = useState(false);
 
   // Profile Setup Form State
   const [setupFullName, setSetupFullName] = useState('');
@@ -1010,6 +1018,17 @@ export default function App() {
   const handleBanToggle = async (userId: string) => {
     const userToToggle = profiles.find(p => p.id === userId);
     if (!userToToggle) return;
+
+    // Prevent banning self or any admin
+    if (
+      userToToggle.id === currentUser?.id ||
+      userToToggle.is_admin ||
+      (userToToggle.email || '').toLowerCase().trim() === ADMIN_EMAIL.toLowerCase()
+    ) {
+      showToast('Admin accounts cannot be banned.');
+      return;
+    }
+
     const newStatus = !userToToggle.is_banned;
     await updateProfile(userId, { is_banned: newStatus });
     setProfiles(prev => prev.map(p => p.id === userId ? { ...p, is_banned: newStatus } : p));
@@ -1174,6 +1193,8 @@ export default function App() {
             setSelectedUserId(userId);
             setCurrentPage('profile');
           }}
+          onOpenSendFeedback={() => setIsFeedbackModalOpen(true)}
+          onOpenMyFeedback={() => setIsMyFeedbackModalOpen(true)}
         />
       )}
 
@@ -2888,6 +2909,14 @@ export default function App() {
                 >
                   Roadmap steps
                 </div>
+                <div 
+                  className={`admin-tab cursor-pointer select-none flex items-center gap-1.5 ${adminTab === 'feedback' ? 'active' : ''}`}
+                  onClick={() => setAdminTab('feedback')}
+                  id="admin-tab-feedback"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Feedback</span>
+                </div>
               </div>
 
               {/* TAB: FIELDS / CATEGORIES */}
@@ -2979,19 +3008,25 @@ export default function App() {
                           {p.is_banned ? 'Banned' : 'Active'}
                         </span>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-1.5">
                         <button 
                           className="admin-action-btn hover:bg-slate-100"
                           onClick={() => handleOpenUserProfile(p.id)}
                         >
                           View
                         </button>
-                        <button 
-                          className={`admin-action-btn danger hover:bg-red-50`}
-                          onClick={() => handleBanToggle(p.id)}
-                        >
-                          {p.is_banned ? 'Unban' : 'Ban'}
-                        </button>
+                        {p.is_admin || p.id === currentUser?.id || (p.email || '').toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() ? (
+                          <span className="text-[11px] text-[#8a8ca3] font-medium italic px-2 py-1 select-none">
+                            Protected
+                          </span>
+                        ) : (
+                          <button 
+                            className="admin-action-btn danger hover:bg-red-50"
+                            onClick={() => handleBanToggle(p.id)}
+                          >
+                            {p.is_banned ? 'Unban' : 'Ban'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -3102,6 +3137,18 @@ export default function App() {
               </div>
             )}
 
+            {/* TAB: FEEDBACK */}
+            {adminTab === 'feedback' && (
+              <AdminFeedbackSection 
+                profiles={profiles}
+                onOpenUserProfile={(userId) => {
+                  setSelectedUserId(userId);
+                  setCurrentPage('profile');
+                }}
+                showToast={showToast}
+              />
+            )}
+
             </div>
           )}
         </div>
@@ -3121,6 +3168,7 @@ export default function App() {
             }
             setCurrentPage(page);
           }}
+          onOpenSendFeedback={() => setIsFeedbackModalOpen(true)}
         />
       )}
 
@@ -3201,6 +3249,23 @@ export default function App() {
         isLoading={isUpdatingPassword}
         onPasteRecoveryLink={handlePasteRecoveryLink}
       />
+
+      {/* Send Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        onSuccess={(msg) => showToast(msg)}
+      />
+
+      {/* User Feedback History Modal */}
+      {currentUser && currentUser.id && (
+        <UserFeedbackHistoryModal
+          isOpen={isMyFeedbackModalOpen}
+          onClose={() => setIsMyFeedbackModalOpen(false)}
+          userId={currentUser.id}
+          onOpenSendFeedback={() => setIsFeedbackModalOpen(true)}
+        />
+      )}
 
     </div>
   );

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { PageType, Profile } from '../types';
-import { Facebook, Twitter, Instagram, Github, Mail, MessageSquare, Compass, Trophy, LayoutDashboard } from 'lucide-react';
+import { Facebook, Mail, Send, MessageCircle, MessageSquare, Compass, Trophy, LayoutDashboard } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (page: PageType) => void;
   currentUser: Profile;
+  onOpenSendFeedback?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser, onOpenSendFeedback }) => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -40,44 +41,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser }) => {
             <p className="text-sm text-[#9ca3af] leading-relaxed">
               Empowering DIU students and engineering cohorts with gamified skill sprints, structured roadmaps, and peer competition.
             </p>
-            <div className="flex items-center gap-3.5 pt-2">
-              <a 
-                href="https://facebook.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#9ca3af] hover:text-white transition-colors"
-                title="Facebook"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#9ca3af] hover:text-white transition-colors"
-                title="Twitter"
-              >
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a 
-                href="https://instagram.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#9ca3af] hover:text-white transition-colors"
-                title="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a 
-                href="https://github.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#9ca3af] hover:text-white transition-colors"
-                title="GitHub"
-              >
-                <Github className="w-4 h-4" />
-              </a>
-            </div>
           </div>
 
           {/* Col 2: Quick Links */}
@@ -135,23 +98,77 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser }) => {
           {/* Col 3: Contact Us */}
           <div>
             <h4 className="text-sm font-bold uppercase tracking-widest text-white mb-5">Contact Us</h4>
-            <ul className="space-y-3.5 text-sm">
+            <ul className="space-y-3 text-sm">
               <li>
                 <a 
                   href="mailto:mdsohanali636@gmail.com" 
-                  className="hover:text-white transition-colors flex items-center gap-2.5"
+                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
+                  title="Send Email to mdsohanali636@gmail.com"
                 >
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <span>mdsohanali636@gmail.com</span>
+                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-red-500/20 text-slate-400 group-hover:text-red-400 flex items-center justify-center transition-colors">
+                    <Mail className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="truncate">mdsohanali636@gmail.com</span>
                 </a>
               </li>
               <li>
-                <button 
-                  onClick={() => alert('Feedback form or chat support is active! You can also reach out via WhatsApp/Telegram profiles.')}
-                  className="hover:text-white transition-colors flex items-center gap-2.5 text-left"
+                <a 
+                  href="https://facebook.com/akrsohan" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
+                  title="Facebook: facebook.com/akrsohan"
                 >
-                  <MessageSquare className="w-4 h-4 text-slate-400" />
-                  <span>Send Feedback</span>
+                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-blue-500/20 text-slate-400 group-hover:text-blue-400 flex items-center justify-center transition-colors">
+                    <Facebook className="w-3.5 h-3.5" />
+                  </div>
+                  <span>facebook.com/akrsohan</span>
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://t.me/akrsohan" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
+                  title="Telegram: @akrsohan"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-sky-500/20 text-slate-400 group-hover:text-sky-400 flex items-center justify-center transition-colors">
+                    <Send className="w-3.5 h-3.5" />
+                  </div>
+                  <span>Telegram: @akrsohan</span>
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://wa.me/akrsohan" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
+                  title="WhatsApp: akrsohan"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 text-slate-400 group-hover:text-emerald-400 flex items-center justify-center transition-colors">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </div>
+                  <span>WhatsApp: akrsohan</span>
+                </a>
+              </li>
+              <li className="pt-1">
+                <button 
+                  onClick={() => {
+                    if (onOpenSendFeedback) {
+                      onOpenSendFeedback();
+                    } else {
+                      alert('Please log in to submit your feedback.');
+                    }
+                  }}
+                  className="hover:text-white transition-colors flex items-center gap-2.5 text-left text-slate-400 hover:text-slate-200 cursor-pointer"
+                  id="footer-btn-send-feedback"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-white/5 hover:bg-[#6c5ce7]/20 text-slate-400 hover:text-[#6c5ce7] flex items-center justify-center transition-colors">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-semibold">Send Feedback</span>
                 </button>
               </li>
             </ul>

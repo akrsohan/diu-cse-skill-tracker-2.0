@@ -91,3 +91,14 @@ export interface UserBadge {
   badge_id: string;
   earned_at: string;
 }
+
+export interface FeedbackItem {
+  id: string;
+  user_id: string;
+  user_email: string;
+  message: string;
+  status: 'unread' | 'read';
+  created_at: string;
+  updated_at?: string;
+}
+
