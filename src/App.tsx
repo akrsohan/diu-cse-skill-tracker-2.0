@@ -781,7 +781,7 @@ export default function App() {
       return;
     }
 
-    if (!currentUser.id) {
+    if (!currentUser || !currentUser.id) {
       setSetupError('Session expired. Please log in again.');
       setSetupLoading(false);
       setCurrentPage('login');
@@ -789,14 +789,13 @@ export default function App() {
     }
 
     let finalAvatarUrl = currentUser.avatar_url;
-    if (setupAvatarPreview) {
+    if (setupAvatarPreview && setupAvatarPreview.startsWith('data:')) {
       finalAvatarUrl = await uploadAvatarImage(currentUser.id, setupAvatarPreview);
-    } else if (setupAvatarPreview === null) {
-      finalAvatarUrl = undefined;
+    } else if (setupAvatarPreview) {
+      finalAvatarUrl = setupAvatarPreview;
     }
 
-    const updatedProfile: Profile = {
-      ...currentUser,
+    const payload: Partial<Profile> = {
       full_name: setupFullName.trim() || currentUser.full_name,
       department: setupDepartment.trim() || currentUser.department,
       roll_number: setupRoll.trim() || currentUser.roll_number,
@@ -808,15 +807,32 @@ export default function App() {
       profile_completed: true
     };
 
-    const { success, error } = await updateProfile(currentUser.id, updatedProfile);
+    const { success, error } = await updateProfile(currentUser.id, payload);
     if (!success) {
       setSetupError(error || 'Failed to save profile to database.');
       setSetupLoading(false);
       return;
     }
 
-    setCurrentUser(updatedProfile);
-    setProfiles(prev => prev.map(p => p.id === currentUser.id ? updatedProfile : p));
+    // Verify by re-fetching the updated profile from Supabase
+    const freshProfile = await getProfile(currentUser.id);
+    const verifiedProfile: Profile = freshProfile || {
+      ...currentUser,
+      ...payload,
+      profile_completed: true
+    };
+
+    setCurrentUser(verifiedProfile);
+    setProfiles(prev => {
+      const idx = prev.findIndex(p => p.id === currentUser.id);
+      if (idx !== -1) {
+        const copy = [...prev];
+        copy[idx] = verifiedProfile;
+        return copy;
+      }
+      return [verifiedProfile, ...prev];
+    });
+
     setSetupLoading(false);
     showToast('Profile setup completed successfully!');
     setCurrentPage('discover');
