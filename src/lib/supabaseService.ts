@@ -54,6 +54,8 @@ function saveStoredProfiles(profs: Profile[]) {
  * Fetch a single user profile from Supabase profiles table
  */
 export async function getProfile(userId: string): Promise<Profile | null> {
+  if (!userId) return null;
+
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -61,21 +63,25 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       .eq('id', userId)
       .maybeSingle();
 
-    let resolvedEmail = data?.email;
-    if (!resolvedEmail) {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData.user && (authData.user.id === userId || !userId) && authData.user.email) {
-          resolvedEmail = authData.user.email;
-        }
-      } catch (e) {}
+    if (error) {
+      console.warn('[Supabase getProfile notice]:', error.message);
     }
 
-    if (!error && data) {
+    if (data) {
+      let resolvedEmail = data.email;
+      if (!resolvedEmail) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user && authData.user.id === userId && authData.user.email) {
+            resolvedEmail = authData.user.email;
+          }
+        } catch (e) {}
+      }
+
       const email = (resolvedEmail || '').toLowerCase().trim();
       const isAdmin = email === ADMIN_EMAIL.toLowerCase() || Boolean(data.is_admin);
 
-      return {
+      const profile: Profile = {
         id: data.id,
         email: resolvedEmail || undefined,
         full_name: data.full_name || '',
@@ -95,15 +101,14 @@ export async function getProfile(userId: string): Promise<Profile | null> {
         is_banned: Boolean(data.is_banned),
         created_at: data.created_at
       };
+
+      return profile;
     }
   } catch (err) {
-    // Suppress network or missing table error and use fallback
+    console.error('[Supabase getProfile exception]:', err);
   }
 
-  // Fallback from cache or initial list
-  const allProfs = getStoredProfiles();
-  const found = allProfs.find(p => p.id === userId || p.email?.toLowerCase() === userId.toLowerCase());
-  return found || null;
+  return null;
 }
 
 /**
@@ -157,7 +162,7 @@ export async function uploadAvatarImage(userId: string, imageData: string): Prom
     console.warn('Supabase storage upload error:', err);
   }
 
-  // Graceful fallback to optimized base64
+  // Graceful fallback to image data
   return imageData;
 }
 
@@ -165,29 +170,7 @@ export async function uploadAvatarImage(userId: string, imageData: string): Prom
  * Update an existing user profile in Supabase profiles table
  */
 export async function updateProfile(userId: string, updates: Partial<Profile>): Promise<{ success: boolean; error?: string }> {
-  // Always update local cache first
-  const currentProfs = getStoredProfiles();
-  const existingIdx = currentProfs.findIndex(p => p.id === userId);
-  if (existingIdx !== -1) {
-    currentProfs[existingIdx] = { ...currentProfs[existingIdx], ...updates };
-  } else {
-    currentProfs.unshift({
-      id: userId,
-      email: updates.email || '',
-      full_name: updates.full_name || 'Student',
-      department: updates.department || '',
-      roll_number: updates.roll_number || '',
-      batch_number: updates.batch_number || '',
-      profile_completed: updates.profile_completed ?? false,
-      points: updates.points ?? 0,
-      current_streak: updates.current_streak ?? 0,
-      longest_streak: updates.longest_streak ?? 0,
-      is_admin: (updates.email || '').toLowerCase().trim() === ADMIN_EMAIL.toLowerCase(),
-      is_banned: false,
-      ...updates
-    });
-  }
-  saveStoredProfiles(currentProfs);
+  if (!userId) return { success: false, error: 'User ID is missing' };
 
   try {
     const payload: Record<string, any> = {};
@@ -204,6 +187,7 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
     if (updates.points !== undefined) payload.points = updates.points;
     if (updates.current_streak !== undefined) payload.current_streak = updates.current_streak;
     if (updates.longest_streak !== undefined) payload.longest_streak = updates.longest_streak;
+    if (updates.is_admin !== undefined) payload.is_admin = updates.is_admin;
     if (updates.is_banned !== undefined) payload.is_banned = updates.is_banned;
 
     const { error } = await supabase
@@ -214,13 +198,14 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
       }, { onConflict: 'id' });
 
     if (error) {
-      console.warn('Supabase profile update warning:', error);
+      console.error('[Supabase updateProfile error]:', error.message, error);
+      return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (err: any) {
     console.error('Error in updateProfile:', err);
-    return { success: true };
+    return { success: false, error: err.message || 'Database error occurred' };
   }
 }
 
@@ -232,7 +217,7 @@ export async function ensureProfile(user: { id: string; email?: string; full_nam
   if (existing) {
     if ((!existing.email || existing.email !== user.email) && user.email) {
       existing.email = user.email;
-      const isAdmin = user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+      const isAdmin = user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() || existing.is_admin;
       existing.is_admin = isAdmin;
       await updateProfile(user.id, { email: user.email, is_admin: isAdmin });
     }
@@ -257,34 +242,34 @@ export async function ensureProfile(user: { id: string; email?: string; full_nam
     is_banned: false
   };
 
-  // Cache locally
-  const currentProfs = getStoredProfiles();
-  saveStoredProfiles([newProfile, ...currentProfs.filter(p => p.id !== newProfile.id)]);
-
   try {
-    await supabase.from('profiles').upsert({
+    const { error } = await supabase.from('profiles').upsert({
       id: newProfile.id,
       email: newProfile.email,
       full_name: newProfile.full_name,
       department: newProfile.department,
       roll_number: newProfile.roll_number,
       batch_number: newProfile.batch_number,
-      profile_completed: newProfile.profile_completed,
+      profile_completed: false,
       points: newProfile.points,
       current_streak: newProfile.current_streak,
       longest_streak: newProfile.longest_streak,
       is_admin: newProfile.is_admin,
       is_banned: newProfile.is_banned
-    });
+    }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[Supabase ensureProfile error]:', error.message);
+    }
   } catch (err) {
-    // Ignore table missing error
+    console.warn('[Supabase ensureProfile exception]:', err);
   }
 
   return newProfile;
 }
 
 /**
- * Fetch all registered profiles from Supabase (with automatic local fallback)
+ * Fetch all registered profiles from Supabase
  */
 export async function getAllProfiles(): Promise<Profile[]> {
   try {
@@ -315,15 +300,13 @@ export async function getAllProfiles(): Promise<Profile[]> {
         created_at: item.created_at
       }));
 
-      // Update cache
-      saveStoredProfiles(mapped);
       return mapped;
     }
   } catch (err) {
-    // Suppress network or missing table error
+    console.error('[Supabase getAllProfiles exception]:', err);
   }
 
-  return getStoredProfiles();
+  return [];
 }
 
 /**

@@ -26,6 +26,7 @@ import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, FieldModal, StepModal } from './components/AdminModals';
 import { PasswordRecoveryModal } from './components/PasswordRecoveryModal';
+import { AuthLoadingScreen } from './components/AuthLoadingScreen';
 import { 
   getProfile,
   updateProfile,
@@ -143,30 +144,26 @@ export default function App() {
   // Selected Profile for Public Profile view
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  // Logged-in User Profile (Default to safe guest profile when initialProfiles is empty)
-  const [currentUser, setCurrentUser] = useState<Profile>(initialProfiles[0] || {
-    id: '',
-    email: '',
-    full_name: 'Guest User',
-    department: '',
-    roll_number: '',
-    batch_number: '',
-    profile_completed: false,
-    points: 0,
-    current_streak: 0,
-    longest_streak: 0,
-    is_admin: false,
-    is_banned: false
-  });
+  // Loading & Initialization state (Explicit loading state so app does not redirect while restoring session)
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
-  // Enforce mandatory login/signup: if user is not logged in, force page to login/signup
+  // Logged-in User Profile (null when not authenticated)
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+
+  // Enforce Protected Route rules once session restoration is complete
   useEffect(() => {
+    if (isAuthLoading) return;
+
     if (!currentUser || !currentUser.id) {
       if (currentPage !== 'login' && currentPage !== 'signup') {
         setCurrentPage('login');
       }
+    } else if (!currentUser.profile_completed) {
+      if (currentPage !== 'profile-setup') {
+        setCurrentPage('profile-setup');
+      }
     }
-  }, [currentUser, currentPage]);
+  }, [isAuthLoading, currentUser, currentPage]);
 
   // Active Challenge (User Progress)
   const [activeProgress, setActiveProgress] = useState<UserProgress | null>(null);
@@ -350,54 +347,78 @@ export default function App() {
 
   // Sync Supabase Auth Session on mount and listen to changes
   useEffect(() => {
-    const RESET_KEY = 'skilltrack_accounts_reset_v4';
-    if (!localStorage.getItem(RESET_KEY)) {
-      localStorage.removeItem('skilltrack_profiles_cache');
-      localStorage.removeItem('skilltrack_progress_cache');
-      localStorage.removeItem('skilltrack_completed_progress_cache');
-      localStorage.removeItem('skilltrack_badges_cache');
-      supabase.auth.signOut();
-      localStorage.setItem(RESET_KEY, 'true');
-    }
+    let isMounted = true;
 
     // Auto-detect password recovery in URL hash or params
     if (window.location.hash.includes('type=recovery') || window.location.href.includes('type=recovery')) {
       setIsPasswordRecoveryMode(true);
     }
 
-    if (!isSupabaseConfigured()) {
-      refreshAppData();
-      return;
-    }
+    const initAuth = async () => {
+      try {
+        if (!isSupabaseConfigured()) {
+          if (isMounted) {
+            setIsAuthLoading(false);
+            setCurrentPage('login');
+          }
+          return;
+        }
 
-    // Check existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        let profile = await getProfile(session.user.id);
-        if (!profile) {
-          profile = await ensureProfile({
-            id: session.user.id,
-            email: session.user.email,
-            full_name: session.user.user_metadata?.full_name
-          });
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('[Supabase Auth Init] getSession error:', error.message);
         }
-        if (session.user.email && (!profile.email || profile.email !== session.user.email)) {
-          profile.email = session.user.email;
-          const isAdmin = session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
-          profile.is_admin = isAdmin;
-          await updateProfile(session.user.id, { email: session.user.email, is_admin: isAdmin });
+
+        if (session?.user) {
+          const uid = session.user.id;
+          const uemail = session.user.email;
+
+          let profile = await getProfile(uid);
+          if (!profile) {
+            profile = await ensureProfile({
+              id: uid,
+              email: uemail,
+              full_name: session.user.user_metadata?.full_name
+            });
+          }
+
+          if (uemail && (!profile.email || profile.email !== uemail)) {
+            profile.email = uemail;
+            const isAdmin = uemail.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() || Boolean(profile.is_admin);
+            profile.is_admin = isAdmin;
+            await updateProfile(uid, { email: uemail, is_admin: isAdmin });
+          }
+
+          if (isMounted) {
+            setCurrentUser(profile);
+            await refreshAppData(uid);
+            if (!profile.profile_completed) {
+              setCurrentPage('profile-setup');
+            } else {
+              setCurrentPage('discover');
+            }
+          }
+        } else {
+          if (isMounted) {
+            setCurrentUser(null);
+            setCurrentPage('login');
+            await refreshAppData();
+          }
         }
-        setCurrentUser(profile);
-        await refreshAppData(session.user.id);
-        if (!profile.profile_completed) {
-          setCurrentPage('profile-setup');
-        } else if (currentPage === 'login' || currentPage === 'signup') {
-          setCurrentPage('discover');
+      } catch (err) {
+        console.error('[Supabase Auth Init] Exception:', err);
+        if (isMounted) {
+          setCurrentUser(null);
+          setCurrentPage('login');
         }
-      } else {
-        await refreshAppData();
+      } finally {
+        if (isMounted) {
+          setIsAuthLoading(false);
+        }
       }
-    });
+    };
+
+    initAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Supabase Auth Event]:', event, session?.user?.email);
@@ -406,36 +427,47 @@ export default function App() {
         showToast('🔑 Recovery verified! Please set your new password.');
         return;
       }
+
       if (event === 'SIGNED_IN' && session?.user) {
-        let profile = await getProfile(session.user.id);
+        const uid = session.user.id;
+        const uemail = session.user.email;
+        let profile = await getProfile(uid);
         if (!profile) {
           profile = await ensureProfile({
-            id: session.user.id,
-            email: session.user.email,
+            id: uid,
+            email: uemail,
             full_name: session.user.user_metadata?.full_name
           });
         }
-        if (session.user.email && (!profile.email || profile.email !== session.user.email)) {
-          profile.email = session.user.email;
-          const isAdmin = session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+        if (uemail && (!profile.email || profile.email !== uemail)) {
+          profile.email = uemail;
+          const isAdmin = uemail.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() || Boolean(profile.is_admin);
           profile.is_admin = isAdmin;
-          await updateProfile(session.user.id, { email: session.user.email, is_admin: isAdmin });
+          await updateProfile(uid, { email: uemail, is_admin: isAdmin });
         }
-        setCurrentUser(profile);
-        await refreshAppData(session.user.id);
-        if (!profile.profile_completed) {
-          setCurrentPage('profile-setup');
-        } else {
-          setCurrentPage('discover');
+        if (isMounted) {
+          setCurrentUser(profile);
+          await refreshAppData(uid);
+          if (!profile.profile_completed) {
+            setCurrentPage('profile-setup');
+          } else {
+            setCurrentPage('discover');
+          }
+          setIsAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
-        setActiveProgress(null);
-        setUserBadgeIds([]);
-        setCurrentPage('login');
+        if (isMounted) {
+          setCurrentUser(null);
+          setActiveProgress(null);
+          setUserBadgeIds([]);
+          setCurrentPage('login');
+          setIsAuthLoading(false);
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.subscription.unsubscribe();
     };
   }, []);
@@ -1055,6 +1087,10 @@ export default function App() {
     }));
     showToast(`Roadmap step deleted`);
   };
+
+  if (isAuthLoading) {
+    return <AuthLoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f5f8] text-[#1a1c2e] font-sans antialiased">
