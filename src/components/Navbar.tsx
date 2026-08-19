@@ -168,8 +168,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <h3 className="text-xl font-extrabold text-slate-900 tracking-tight lowercase truncate">
                   {getMainName(currentUser.full_name)}
                 </h3>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 font-mono truncate">
-                  {currentUser.email || `${currentUser.full_name.toLowerCase().replace(/\s+/g, '')}@gmail.com`}
+                <p className="text-[11px] font-bold text-slate-400 lowercase tracking-wider mt-0.5 font-mono truncate">
+                  {currentUser.email || 'mdsohanali636@gmail.com'}
                 </p>
                 
                 {/* Badges row: ADMIN, VERIFIED */}

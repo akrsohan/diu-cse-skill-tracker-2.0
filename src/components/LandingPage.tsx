@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCcw, AlertCircle } from 'lucide-react';
+import { RefreshCcw, AlertCircle, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 interface LandingPageProps {
   authMode: 'login' | 'signup';
@@ -12,8 +12,10 @@ interface LandingPageProps {
   setAuthName: (name: string) => void;
   authLoading: boolean;
   authError: string | null;
+  setAuthError?: (error: string | null) => void;
   handleAuthSubmit: (e: React.FormEvent) => void;
   onForgotPassword?: (email: string) => Promise<void>;
+  onSendMagicLink?: (email: string) => Promise<void>;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -27,19 +29,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   setAuthName,
   authLoading,
   authError,
+  setAuthError,
   handleAuthSubmit,
-  onForgotPassword
+  onForgotPassword,
+  onSendMagicLink
 }) => {
   const [formMode, setFormMode] = useState<'login' | 'signup' | 'forgot'>(authMode);
   const [isResetSent, setIsResetSent] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     setFormMode(authMode);
   }, [authMode]);
 
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
   const switchMode = (mode: 'login' | 'signup' | 'forgot') => {
     setFormMode(mode);
     setIsResetSent(false);
+    setResetMessage(null);
+    if (setAuthError) {
+      setAuthError(null);
+    }
     if (mode === 'login' || mode === 'signup') {
       setAuthMode(mode);
     }
@@ -48,15 +67,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formMode === 'forgot' && onForgotPassword) {
+      if (cooldown > 0) return;
       try {
         await onForgotPassword(authEmail);
         setIsResetSent(true);
-      } catch (err) {
-        console.error(err);
+        setResetMessage('📧 Password reset email has been sent! Check your inbox (and spam folder).');
+        setCooldown(60);
+      } catch (err: any) {
+        setCooldown(55);
       }
       return;
     }
     handleAuthSubmit(e);
+  };
+
+  const handleMagicLink = async () => {
+    if (!authEmail.trim()) {
+      if (setAuthError) setAuthError('Please enter your email address first.');
+      return;
+    }
+    if (cooldown > 0) return;
+    if (onSendMagicLink) {
+      try {
+        await onSendMagicLink(authEmail);
+        setIsResetSent(true);
+        setResetMessage('✨ 1-Click Magic Login link sent to your email! Click the link in your inbox to log in.');
+        setCooldown(60);
+      } catch (err: any) {
+        setCooldown(55);
+      }
+    }
   };
 
   return (
@@ -381,8 +421,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h2>Log in</h2>
 
             {authError && (
-              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
-                <AlertCircle size={14} /> <span>{authError}</span>
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" /> <span>{authError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] font-extrabold transition-all cursor-pointer"
+                >
+                  <KeyRound size={12} /> Reset password for this email
+                </button>
               </div>
             )}
 
@@ -398,15 +447,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <label>Email address</label>
               </div>
               
-              <div className="field">
+              <div className="field relative">
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"}
                   placeholder=" " 
                   required 
                   value={authPassword}
                   onChange={e => setAuthPassword(e.target.value)}
                 />
                 <label>Password</label>
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
 
               <div className="flex items-center justify-between mb-4">
@@ -441,8 +498,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h2>Sign up</h2>
 
             {authError && (
-              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
-                <AlertCircle size={14} /> <span>{authError}</span>
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" /> <span>{authError}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => switchMode('login')}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[11px] font-extrabold transition-all cursor-pointer"
+                  >
+                    Go to Log in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgot')}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] font-extrabold transition-all cursor-pointer"
+                  >
+                    <KeyRound size={12} /> Reset password
+                  </button>
+                </div>
               </div>
             )}
 
@@ -469,15 +544,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <label>Email address</label>
               </div>
 
-              <div className="field">
+              <div className="field relative">
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"}
                   placeholder=" " 
                   required 
                   value={authPassword}
                   onChange={e => setAuthPassword(e.target.value)}
                 />
                 <label>Password</label>
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
 
               <button type="submit" className="btn" disabled={authLoading}>
@@ -499,7 +582,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* FORGOT PASSWORD PANEL */}
           <div className={`panel ${formMode === 'forgot' ? 'active' : ''}`} id="forgotPanel">
             <div className="toggle-title">DIU CSE Skill Portal</div>
-            <h2>Reset Password</h2>
+            <h2>Account Recovery</h2>
 
             {authError && (
               <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center flex items-center justify-center gap-2">
@@ -507,9 +590,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
-            {isResetSent && (
+            {isResetSent && resetMessage && (
               <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold text-center">
-                📧 Password reset email has been sent! Check your inbox.
+                {resetMessage}
               </div>
             )}
 
@@ -525,15 +608,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <label>Email address</label>
               </div>
 
-              <button type="submit" className="btn" disabled={authLoading}>
-                {authLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <RefreshCcw className="animate-spin" size={16} /> Sending...
-                  </span>
-                ) : (
-                  'Send Reset Link'
-                )}
-              </button>
+              <div className="flex flex-col gap-2.5 mt-2">
+                <button type="submit" className="btn" disabled={authLoading || cooldown > 0}>
+                  {authLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <RefreshCcw className="animate-spin" size={16} /> Sending...
+                    </span>
+                  ) : cooldown > 0 ? (
+                    `⏳ Email Sent — Wait (${cooldown}s)`
+                  ) : (
+                    '🔑 Send Password Reset Link'
+                  )}
+                </button>
+
+                <button 
+                  type="button" 
+                  onClick={handleMagicLink}
+                  className="w-full py-2.5 px-4 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={authLoading || cooldown > 0}
+                >
+                  {cooldown > 0 ? `✨ Check your inbox or wait (${cooldown}s)` : '✨ Send 1-Click Magic Login Link'}
+                </button>
+              </div>
             </form>
 
             <div className="switch">

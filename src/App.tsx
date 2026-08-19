@@ -25,6 +25,7 @@ import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
 import { SkillModal, FieldModal, StepModal } from './components/AdminModals';
+import { PasswordRecoveryModal } from './components/PasswordRecoveryModal';
 import { 
   getProfile,
   updateProfile,
@@ -69,7 +70,12 @@ import {
   Camera,
   Save,
   Check,
-  Share2
+  Share2,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Link2,
+  X
 } from 'lucide-react';
 
 // Helper to format social contact links into working URLs
@@ -222,9 +228,85 @@ export default function App() {
   // Success Notification Toast Banner
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Password Recovery / Reset New Password State
+  const [isPasswordRecoveryMode, setIsPasswordRecoveryMode] = useState(false);
+  const [newRecoveryPassword, setNewRecoveryPassword] = useState('');
+  const [confirmRecoveryPassword, setConfirmRecoveryPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [pastedLinkInput, setPastedLinkInput] = useState('');
+  const [showRecoveryPass, setShowRecoveryPass] = useState(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  /**
+   * Helper to activate session from a pasted Supabase email URL / hash
+   */
+  const handlePasteRecoveryLink = async (pastedText: string) => {
+    try {
+      let clean = pastedText.trim();
+      if (clean.includes('#')) {
+        clean = clean.split('#')[1];
+      } else if (clean.includes('?')) {
+        clean = clean.split('?')[1];
+      }
+      const params = new URLSearchParams(clean);
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+      if (access_token && refresh_token) {
+        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          showToast('Invalid or expired token link: ' + error.message);
+        } else if (data?.session) {
+          setIsPasswordRecoveryMode(true);
+          showToast('✅ Session verified! Please enter your new password.');
+        }
+      } else {
+        showToast('Could not find access_token in the pasted link.');
+      }
+    } catch (e: any) {
+      showToast('Error verifying token link: ' + e.message);
+    }
+  };
+
+  /**
+   * Save the new password chosen during recovery
+   */
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecoveryPassword || newRecoveryPassword.length < 6) {
+      showToast('Password must be at least 6 characters.');
+      return;
+    }
+    if (newRecoveryPassword !== confirmRecoveryPassword) {
+      showToast('Passwords do not match. Please recheck.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password: newRecoveryPassword
+      });
+      if (error) {
+        showToast('Failed to update password: ' + error.message);
+      } else {
+        showToast('✅ Password updated successfully! Welcome to your dashboard.');
+        setIsPasswordRecoveryMode(false);
+        setNewRecoveryPassword('');
+        setConfirmRecoveryPassword('');
+        if (data?.user) {
+          await refreshAppData(data.user.id);
+          setCurrentPage('discover');
+        }
+      }
+    } catch (err: any) {
+      showToast('Error: ' + err.message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   /**
@@ -278,6 +360,11 @@ export default function App() {
       localStorage.setItem(RESET_KEY, 'true');
     }
 
+    // Auto-detect password recovery in URL hash or params
+    if (window.location.hash.includes('type=recovery') || window.location.href.includes('type=recovery')) {
+      setIsPasswordRecoveryMode(true);
+    }
+
     if (!isSupabaseConfigured()) {
       refreshAppData();
       return;
@@ -294,6 +381,12 @@ export default function App() {
             full_name: session.user.user_metadata?.full_name
           });
         }
+        if (session.user.email && (!profile.email || profile.email !== session.user.email)) {
+          profile.email = session.user.email;
+          const isAdmin = session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+          profile.is_admin = isAdmin;
+          await updateProfile(session.user.id, { email: session.user.email, is_admin: isAdmin });
+        }
         setCurrentUser(profile);
         await refreshAppData(session.user.id);
         if (!profile.profile_completed) {
@@ -307,6 +400,12 @@ export default function App() {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Supabase Auth Event]:', event, session?.user?.email);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecoveryMode(true);
+        showToast('🔑 Recovery verified! Please set your new password.');
+        return;
+      }
       if (event === 'SIGNED_IN' && session?.user) {
         let profile = await getProfile(session.user.id);
         if (!profile) {
@@ -315,6 +414,12 @@ export default function App() {
             email: session.user.email,
             full_name: session.user.user_metadata?.full_name
           });
+        }
+        if (session.user.email && (!profile.email || profile.email !== session.user.email)) {
+          profile.email = session.user.email;
+          const isAdmin = session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+          profile.is_admin = isAdmin;
+          await updateProfile(session.user.id, { email: session.user.email, is_admin: isAdmin });
         }
         setCurrentUser(profile);
         await refreshAppData(session.user.id);
@@ -472,6 +577,8 @@ export default function App() {
           return;
         }
 
+        console.log('[Supabase Auth] Initiating signUp for email:', authEmail.trim());
+
         const { data, error } = await supabase.auth.signUp({
           email: authEmail.trim(),
           password: authPassword,
@@ -483,10 +590,22 @@ export default function App() {
         });
 
         if (error) {
-          setAuthError(error.message);
+          console.error('[Supabase Auth] signUp request failed:', {
+            message: error.message,
+            status: error.status,
+            name: error.name,
+            error
+          });
+          if (error.message.toLowerCase().includes('already registered')) {
+            setAuthError('An account with this email already exists. Please switch to Log in.');
+          } else {
+            setAuthError(error.message);
+          }
           setAuthLoading(false);
           return;
         }
+
+        console.log('[Supabase Auth] signUp successful:', data);
 
         if (data.user) {
           const isUserAdmin = authEmail.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -525,25 +644,46 @@ export default function App() {
         }
       } else {
         // Login Mode
+        console.log('[Supabase Auth] Initiating signIn for email:', authEmail.trim());
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authEmail.trim(),
           password: authPassword
         });
 
         if (error) {
-          setAuthError(error.message);
+          console.error('[Supabase Auth] signIn failed:', {
+            message: error.message,
+            status: error.status,
+            name: error.name,
+            error
+          });
+          if (error.message.toLowerCase().includes('invalid login credentials')) {
+            setAuthError('Invalid email or password. If you have not created an account yet, please click "Create an account" to Sign up first.');
+          } else {
+            setAuthError(error.message);
+          }
           setAuthLoading(false);
           return;
         }
 
+        console.log('[Supabase Auth] signIn successful:', data);
+
         if (data.user) {
           let userProf = await getProfile(data.user.id);
+          const loginEmail = data.user.email || authEmail.trim();
           if (!userProf) {
             userProf = await ensureProfile({
               id: data.user.id,
-              email: data.user.email,
+              email: loginEmail,
               full_name: data.user.user_metadata?.full_name
             });
+          }
+          if (loginEmail && (!userProf.email || userProf.email !== loginEmail)) {
+            userProf.email = loginEmail;
+            const isAdmin = loginEmail.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+            userProf.is_admin = isAdmin;
+            await updateProfile(data.user.id, { email: loginEmail, is_admin: isAdmin });
           }
 
           setCurrentUser(userProf);
@@ -558,6 +698,7 @@ export default function App() {
         }
       }
     } catch (err: any) {
+      console.error('[Supabase Auth] Unexpected exception during auth submit:', err);
       setAuthError(err.message || 'An unexpected error occurred.');
     } finally {
       setAuthLoading(false);
@@ -999,11 +1140,48 @@ export default function App() {
           setAuthName={setAuthName}
           authLoading={authLoading}
           authError={authError}
+          setAuthError={setAuthError}
           handleAuthSubmit={handleAuthSubmit}
           onForgotPassword={async (email) => {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) throw error;
-            showToast('Password reset email sent successfully!');
+            console.log('[Supabase Auth] Requesting resetPasswordForEmail for:', email);
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: window.location.origin
+            });
+            if (error) {
+              console.error('[Supabase Auth] resetPasswordForEmail failed:', error);
+              if (error.message.toLowerCase().includes('security purposes') || error.message.toLowerCase().includes('rate_limit') || (error as any).status === 429) {
+                const friendlyMsg = 'A reset email was already sent recently. Please check your inbox (including spam) or wait 60 seconds.';
+                setAuthError(friendlyMsg);
+                throw new Error(friendlyMsg);
+              }
+              setAuthError(error.message);
+              throw error;
+            }
+            console.log('[Supabase Auth] resetPasswordForEmail success for:', email);
+            setAuthError(null);
+            showToast('Password reset email sent! Check your inbox.');
+          }}
+          onSendMagicLink={async (email) => {
+            console.log('[Supabase Auth] Requesting signInWithOtp for:', email);
+            const { error } = await supabase.auth.signInWithOtp({
+              email,
+              options: {
+                emailRedirectTo: window.location.origin
+              }
+            });
+            if (error) {
+              console.error('[Supabase Auth] signInWithOtp failed:', error);
+              if (error.message.toLowerCase().includes('security purposes') || error.message.toLowerCase().includes('rate_limit') || (error as any).status === 429) {
+                const friendlyMsg = 'A login email was already sent recently. Please check your inbox (including spam) or wait 60 seconds.';
+                setAuthError(friendlyMsg);
+                throw new Error(friendlyMsg);
+              }
+              setAuthError(error.message);
+              throw error;
+            }
+            console.log('[Supabase Auth] signInWithOtp success for:', email);
+            setAuthError(null);
+            showToast('Magic login link sent to your email!');
           }}
         />
       )}
@@ -2957,6 +3135,19 @@ export default function App() {
         skillId={currentSkill.id}
         skillName={currentSkill.name}
         nextOrder={currentSkillSteps.length + 1}
+      />
+
+      {/* Password Recovery Modal */}
+      <PasswordRecoveryModal
+        isOpen={isPasswordRecoveryMode}
+        onClose={() => setIsPasswordRecoveryMode(false)}
+        onSaveNewPassword={handleSaveNewPassword}
+        newPassword={newRecoveryPassword}
+        setNewPassword={setNewRecoveryPassword}
+        confirmPassword={confirmRecoveryPassword}
+        setConfirmPassword={setConfirmRecoveryPassword}
+        isLoading={isUpdatingPassword}
+        onPasteRecoveryLink={handlePasteRecoveryLink}
       />
 
     </div>

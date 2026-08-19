@@ -61,13 +61,23 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       .eq('id', userId)
       .maybeSingle();
 
+    let resolvedEmail = data?.email;
+    if (!resolvedEmail) {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user && (authData.user.id === userId || !userId) && authData.user.email) {
+          resolvedEmail = authData.user.email;
+        }
+      } catch (e) {}
+    }
+
     if (!error && data) {
-      const email = (data.email || '').toLowerCase().trim();
+      const email = (resolvedEmail || '').toLowerCase().trim();
       const isAdmin = email === ADMIN_EMAIL.toLowerCase() || Boolean(data.is_admin);
 
       return {
         id: data.id,
-        email: data.email,
+        email: resolvedEmail || undefined,
         full_name: data.full_name || '',
         avatar_url: data.avatar_url || undefined,
         department: data.department || '',
@@ -181,6 +191,7 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
 
   try {
     const payload: Record<string, any> = {};
+    if (updates.email !== undefined) payload.email = updates.email;
     if (updates.full_name !== undefined) payload.full_name = updates.full_name;
     if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url;
     if (updates.department !== undefined) payload.department = updates.department;
@@ -219,6 +230,12 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
 export async function ensureProfile(user: { id: string; email?: string; full_name?: string }): Promise<Profile> {
   const existing = await getProfile(user.id);
   if (existing) {
+    if ((!existing.email || existing.email !== user.email) && user.email) {
+      existing.email = user.email;
+      const isAdmin = user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
+      existing.is_admin = isAdmin;
+      await updateProfile(user.id, { email: user.email, is_admin: isAdmin });
+    }
     return existing;
   }
 
