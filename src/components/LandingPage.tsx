@@ -39,6 +39,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const switchMode = (mode: 'login' | 'signup' | 'forgot') => {
     setFormMode(mode);
+    setIsResetSent(false);
     if (mode === 'login' || mode === 'signup') {
       setAuthMode(mode);
     }
@@ -59,7 +60,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#07080d] text-[#e8ecff] flex flex-col items-center justify-center relative p-4 sm:p-6 overflow-hidden select-none font-sans">
+    <div className="w-full min-h-screen bg-[#07080d] text-[#e8ecff] flex flex-col items-center justify-center relative p-2 sm:p-4 md:p-6 overflow-y-auto select-none font-sans">
       <style dangerouslySetInnerHTML={{ __html: `
         :root{
           --bg:#07080d;
@@ -73,25 +74,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         .stage{
           position:relative;
-          width:900px;
-          max-width:94vw;
-          height:580px;
+          width:880px;
+          max-width:calc(100vw - 24px);
+          height:560px;
+          max-height:calc(100vh - 32px);
           border-radius:28px;
           background:var(--panel);
           box-shadow:0 40px 100px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.08);
           overflow:hidden;
           display:flex;
-          z-index: 10;
+          z-index:10;
+          margin:auto;
         }
         .visual{
           position:relative;
           width:50%;
           height:100%;
           overflow:hidden;
-          transition:transform .9s cubic-bezier(.65,0,.35,1);
+          transition:transform .8s cubic-bezier(.65,0,.35,1);
           display:flex;
           align-items:center;
           justify-content:center;
+          z-index:2;
+          flex-shrink:0;
         }
         .visual::before{
           content:'';
@@ -109,32 +114,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           33%{transform:translate(4%,-5%) rotate(8deg) scale(1.08);}
           66%{transform:translate(-3%,4%) rotate(-6deg) scale(0.96);}
         }
-        .brand{position:relative;z-index:2;text-align:center;color:#fff;padding:0 30px;}
-        .brand h1{font-size:32px;margin:0 0 10px;letter-spacing:.5px;text-shadow:0 0 30px rgba(55,240,255,.6);font-weight:800;color:#ffffff;}
+        .brand{position:relative;z-index:2;text-align:center;color:#fff;padding:0 24px;}
+        .brand h1{font-size:30px;margin:0 0 10px;letter-spacing:.5px;text-shadow:0 0 30px rgba(55,240,255,.6);font-weight:800;color:#ffffff;}
         .brand p{color:rgba(255,255,255,.8);font-size:14px;line-height:1.6;max-width:280px;margin:0 auto;}
 
         .formside{
+          position:relative;
           width:50%;
           height:100%;
           display:flex;
           align-items:center;
           justify-content:center;
-          transition:transform .9s cubic-bezier(.65,0,.35,1);
-          padding:30px 24px;
+          transition:transform .8s cubic-bezier(.65,0,.35,1);
+          padding:28px 24px;
           overflow-y:auto;
+          z-index:3;
+          flex-shrink:0;
         }
-        .formside form{width:100%;max-width:320px;}
+        .formside form{width:100%;max-width:320px;margin:0 auto;}
         .toggle-title{color:#94a3b8;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;font-weight:700;}
-        .formside h2{color:#ffffff;font-size:28px;margin:0 0 22px;font-weight:800;letter-spacing:-0.5px;}
-        .field{position:relative;margin-bottom:18px;}
+        .formside h2{color:#ffffff;font-size:28px;margin:0 0 20px;font-weight:800;letter-spacing:-0.5px;}
+        .field{position:relative;margin-bottom:16px;}
         .field input, .field select{
-          width:100%;padding:14px 16px;
+          width:100%;padding:13px 16px;
           background:#141724;border:1.5px solid #2e3452;
           border-radius:12px;
           color:#ffffff !important;
           -webkit-text-fill-color:#ffffff !important;
           caret-color:#37f0ff;
-          font-size:14px;
+          font-size:15px;
           font-weight:600;
           outline:none;transition:.25s;
         }
@@ -157,7 +165,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           box-shadow:0 0 0 3px rgba(55,240,255,.2), 0 0 20px rgba(55,240,255,.3);
         }
         .field label{
-          position:absolute;left:16px;top:14px;
+          position:absolute;left:16px;top:13px;
           color:#94a3b8;
           font-size:13.5px;
           font-weight:600;
@@ -168,113 +176,181 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           top:-9px;left:12px;font-size:11px;background:#0d0f18;padding:0 6px;color:#37f0ff !important;font-weight:700;border-radius:4px;
         }
         .btn{
-          width:100%;padding:14px;border:none;border-radius:12px;
+          width:100%;padding:13px;border:none;border-radius:12px;
           background:linear-gradient(90deg,var(--cyan),var(--violet));
           color:#03040a;font-weight:800;font-size:15px;cursor:pointer;
           box-shadow:0 10px 30px rgba(139,92,255,.35);
           transition:transform .2s, box-shadow .2s;
         }
         .btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(139,92,255,.5);}
-        .switch{margin-top:20px;text-align:center;color:var(--muted);font-size:13px;}
+        .switch{margin-top:18px;text-align:center;color:var(--muted);font-size:13px;}
         .switch span{color:var(--cyan);cursor:pointer;font-weight:700;}
         .switch span:hover{text-decoration:underline;}
 
-        /* signup mode: swap sides */
-        .stage.signup .visual{transform:translateX(100%);}
-        .stage.signup .formside{transform:translateX(-100%);}
+        /* signup mode: swap sides for desktop/tablet */
+        @media (min-width: 641px) {
+          .stage.signup .visual{transform:translateX(100%);}
+          .stage.signup .formside{transform:translateX(-100%);}
+        }
         .panel{display:none;}
-        .panel.active{display:block;animation:fadein .5s ease;width:100%;}
-        @keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+        .panel.active{display:block;animation:fadein .4s ease;width:100%;}
+        @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-        @media (max-width: 640px) {
+        /* Tablet Responsive (641px to 1024px) */
+        @media (min-width: 641px) and (max-width: 1024px) {
           .stage {
-            flex-direction: column !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-            min-height: 88vh;
-            max-height: 95vh;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,.9);
-          }
-          .stage.signup .visual{transform:none !important;}
-          .stage.signup .formside{transform:none !important;}
-          .visual {
-            width: 100% !important;
-            height: 130px !important;
-            min-height: 130px !important;
-            padding: 16px;
+            width: 92vw;
+            max-width: 720px;
+            height: 500px;
+            max-height: calc(100vh - 32px);
+            border-radius: 24px;
           }
           .brand {
             padding: 0 16px;
           }
+          .brand .logo-icon {
+            width: 44px !important;
+            height: 44px !important;
+            font-size: 17px !important;
+            margin-bottom: 8px !important;
+          }
           .brand h1 {
-            font-size: 20px;
-            margin-bottom: 4px;
+            font-size: 22px;
+            margin-bottom: 6px;
           }
           .brand p {
+            font-size: 12.5px;
+            line-height: 1.45;
+          }
+          .formside {
+            padding: 20px 18px;
+          }
+          .formside h2 {
+            font-size: 22px;
+            margin-bottom: 14px;
+          }
+          .toggle-title {
+            font-size: 11px;
+            margin-bottom: 2px;
+          }
+          .field {
+            margin-bottom: 13px;
+          }
+          .field input {
+            padding: 11px 14px;
+            font-size: 14px;
+          }
+          .field label {
+            top: 11px;
+            font-size: 12.5px;
+          }
+          .btn {
+            padding: 11px;
+            font-size: 14px;
+          }
+          .switch {
+            margin-top: 14px;
             font-size: 12px;
-            line-height: 1.4;
-            max-width: 100%;
+          }
+        }
+
+        /* Mobile Responsive (<= 640px) */
+        @media (max-width: 640px) {
+          .stage {
+            flex-direction: column !important;
+            width: 100% !important;
+            max-width: 420px !important;
+            height: 550px !important;
+            min-height: 550px !important;
+            border-radius: 24px;
+            box-shadow: 0 30px 80px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.08);
+            margin: 12px auto;
+            position: relative;
+            overflow: hidden;
+          }
+          .visual {
+            width: 100% !important;
+            height: 140px !important;
+            min-height: 140px !important;
+            padding: 16px 16px 14px !important;
+            transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1) !important;
+            z-index: 2 !important;
+          }
+          .stage.signup .visual {
+            transform: translateY(410px) !important;
           }
           .formside {
             width: 100% !important;
-            height: auto !important;
-            flex: 1;
-            padding: 20px 16px;
-            overflow-y: auto;
+            height: 410px !important;
+            padding: 20px 20px 24px !important;
+            overflow-y: auto !important;
+            transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1) !important;
+            z-index: 3 !important;
+          }
+          .stage.signup .formside {
+            transform: translateY(-140px) !important;
+          }
+          .brand {
+            padding: 0 12px;
+          }
+          .brand .logo-icon {
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 16px !important;
+            margin-bottom: 6px !important;
+            border-radius: 14px !important;
+          }
+          .brand h1 {
+            font-size: 20px !important;
+            margin-bottom: 3px !important;
+            font-weight: 800 !important;
+          }
+          .brand p {
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+            max-width: 280px !important;
           }
           .formside form {
             max-width: 100%;
           }
           .formside h2 {
-            font-size: 24px;
-            margin-bottom: 16px;
+            font-size: 24px !important;
+            margin-bottom: 14px !important;
+            font-weight: 800 !important;
           }
           .toggle-title {
-            font-size: 11px;
-            margin-bottom: 4px;
+            font-size: 11px !important;
+            margin-bottom: 2px !important;
+            letter-spacing: 2px !important;
           }
           .field {
-            margin-bottom: 14px;
+            margin-bottom: 13px !important;
           }
           .field input {
-            font-size: 14px;
-            padding: 12px 14px;
-            border-radius: 10px;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            font-weight: 600;
+            font-size: 16px !important; /* Prevents auto zoom on mobile */
+            padding: 12px 14px !important;
+            border-radius: 12px !important;
           }
           .field label {
-            font-size: 13px;
-            top: 12px;
-            left: 14px;
-            color: #94a3b8;
-            font-weight: 600;
+            font-size: 13px !important;
+            top: 12px !important;
+            left: 14px !important;
           }
           .field input:focus + label, .field input:not(:placeholder-shown) + label {
-            top: -9px;
-            left: 10px;
-            font-size: 10.5px;
-            padding: 0 5px;
-            color: #37f0ff !important;
+            top: -8px !important;
+            left: 10px !important;
+            font-size: 10.5px !important;
+            padding: 0 5px !important;
           }
           .btn {
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 12px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            font-weight: 800 !important;
           }
           .switch {
-            margin-top: 16px;
-            font-size: 12px;
-          }
-        }
-
-        @media (min-width: 641px) and (max-width: 1024px) {
-          .stage {
-            width: 88vw;
-            height: 540px;
+            margin-top: 14px !important;
+            font-size: 12.5px !important;
           }
         }
       ` }} />
@@ -283,7 +359,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Visual Side */}
         <div className="visual">
           <div className="brand">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#37f0ff]/10 text-[#37f0ff] mb-4 border border-[#37f0ff]/30 shadow-lg shadow-[#37f0ff]/20 text-xl font-black">
+            <div className="logo-icon inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#37f0ff]/10 text-[#37f0ff] mb-4 border border-[#37f0ff]/30 shadow-lg shadow-[#37f0ff]/20 text-xl font-black">
               DIU
             </div>
             <h1>
@@ -469,3 +545,5 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     </div>
   );
 };
+
+
