@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PageType, Profile } from '../types';
-import { Facebook, Mail, Send, MessageCircle, MessageSquare, Compass, Trophy, LayoutDashboard } from 'lucide-react';
+import { Facebook, Mail, MessageSquare, Compass, Trophy, LayoutDashboard } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (page: PageType) => void;
@@ -113,44 +113,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser, onOpenS
               </li>
               <li>
                 <a 
-                  href="https://facebook.com/akrsohan" 
+                  href="https://www.facebook.com/parodorshhi" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="hover:text-white transition-colors flex items-center gap-2.5 group"
-                  title="Facebook: facebook.com/akrsohan"
+                  title="Facebook: facebook.com/parodorshhi"
                 >
                   <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-blue-500/20 text-slate-400 group-hover:text-blue-400 flex items-center justify-center transition-colors">
                     <Facebook className="w-3.5 h-3.5" />
                   </div>
-                  <span>facebook.com/akrsohan</span>
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="https://t.me/akrsohan" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
-                  title="Telegram: @akrsohan"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-sky-500/20 text-slate-400 group-hover:text-sky-400 flex items-center justify-center transition-colors">
-                    <Send className="w-3.5 h-3.5" />
-                  </div>
-                  <span>Telegram: @akrsohan</span>
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="https://wa.me/akrsohan" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-white transition-colors flex items-center gap-2.5 group"
-                  title="WhatsApp: akrsohan"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 text-slate-400 group-hover:text-emerald-400 flex items-center justify-center transition-colors">
-                    <MessageCircle className="w-3.5 h-3.5" />
-                  </div>
-                  <span>WhatsApp: akrsohan</span>
+                  <span>facebook.com/parodorshhi</span>
                 </a>
               </li>
               <li className="pt-1">
@@ -232,3 +204,4 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, currentUser, onOpenS
     </footer>
   );
 };
+
