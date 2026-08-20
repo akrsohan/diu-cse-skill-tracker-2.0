@@ -2,6 +2,13 @@ import { Field, Skill, RoadmapStep, Badge, Profile, UserProgress } from '../type
 
 export const initialFields: Field[] = [
   {
+    id: 'field-general',
+    name: 'General',
+    description: 'Foundational computer science, developer tools, Git, Linux, problem solving and core basics',
+    icon: '🎯',
+    color: '#6366f1'
+  },
+  {
     id: 'field-1',
     name: 'Web Development',
     description: 'Frontend, Backend, and Full-Stack modern web technologies',
@@ -126,7 +133,7 @@ export const initialSkills: Skill[] = [
   },
   {
     id: 'skill-git',
-    field_id: 'field-3',
+    field_id: 'field-general',
     name: 'Git & GitHub',
     description: 'Version control workflows, branching, rebasing, pull requests and releases',
     order_index: 7,
@@ -138,11 +145,24 @@ export const initialSkills: Skill[] = [
     step_count: 3
   },
   {
+    id: 'skill-linux',
+    field_id: 'field-general',
+    name: 'Linux & Terminal',
+    description: 'Command line navigation, shell scripting, file permissions & process management',
+    order_index: 8,
+    icon: 'LX',
+    bg_color: '#6366f1',
+    difficulty: 'Beginner',
+    avg_days: '3 days',
+    learner_count: 34,
+    step_count: 3
+  },
+  {
     id: 'skill-sql',
     field_id: 'field-1',
     name: 'SQL & DBs',
     description: 'Relational database schema modeling, queries, indexing and optimization',
-    order_index: 8,
+    order_index: 9,
     icon: 'DB',
     bg_color: '#a29bfe',
     difficulty: 'Intermediate',
@@ -349,6 +369,32 @@ export const initialRoadmapSteps: Record<string, RoadmapStep[]> = {
       description: 'Forking, pulling requests, code reviews, issues, tags, and release management.',
       step_order: 3,
       resource_link: 'https://docs.github.com/en/get-started'
+    }
+  ],
+  'skill-linux': [
+    {
+      id: 'step-lx-1',
+      skill_id: 'skill-linux',
+      title: 'Terminal Navigation & File System',
+      description: 'Directory hierarchy, navigation (cd, ls, pwd), file creation and editing (mkdir, touch, nano, vim, cat, grep).',
+      step_order: 1,
+      resource_link: 'https://ubuntu.com/tutorials/command-line-for-beginners'
+    },
+    {
+      id: 'step-lx-2',
+      skill_id: 'skill-linux',
+      title: 'Permissions & User Management',
+      description: 'chmod, chown, file permissions (rwx/octal), sudo privileges, user groups, and SSH remote key login.',
+      step_order: 2,
+      resource_link: 'https://www.linux.com/training-tutorials/understanding-linux-file-permissions/'
+    },
+    {
+      id: 'step-lx-3',
+      skill_id: 'skill-linux',
+      title: 'Bash Scripting & Process Control',
+      description: 'Pipes, redirection, environment variables, cron jobs, background processes (ps, top, kill, systemctl), and shell scripts.',
+      step_order: 3,
+      resource_link: 'https://www.gnu.org/software/bash/manual/'
     }
   ],
   'skill-sql': [

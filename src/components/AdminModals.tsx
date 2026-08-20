@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Field, Skill, RoadmapStep } from '../types';
 import { X, Plus, Trash2, Edit2, Check, Save } from 'lucide-react';
 
@@ -24,6 +24,18 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   const [bgColor, setBgColor] = useState(initialData?.bg_color || '#6c5ce7');
   const [difficulty, setDifficulty] = useState(initialData?.difficulty || 'Beginner');
   const [avgDays, setAvgDays] = useState(initialData?.avg_days || '3 days');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialData?.name || '');
+      setDescription(initialData?.description || '');
+      setFieldId(initialData?.field_id || fields[0]?.id || '');
+      setIcon(initialData?.icon || 'S');
+      setBgColor(initialData?.bg_color || '#6c5ce7');
+      setDifficulty(initialData?.difficulty || 'Beginner');
+      setAvgDays(initialData?.avg_days || '3 days');
+    }
+  }, [isOpen, initialData, fields]);
 
   if (!isOpen) return null;
 
@@ -172,6 +184,14 @@ export const FieldModal: React.FC<FieldModalProps> = ({
   const [description, setDescription] = useState(initialData?.description || '');
   const [icon, setIcon] = useState(initialData?.icon || '💻');
 
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialData?.name || '');
+      setDescription(initialData?.description || '');
+      setIcon(initialData?.icon || '💻');
+    }
+  }, [isOpen, initialData]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -278,6 +298,14 @@ export const StepModal: React.FC<StepModalProps> = ({
   const [description, setDescription] = useState('');
   const [resourceLink, setResourceLink] = useState('');
 
+  useEffect(() => {
+    if (isOpen) {
+      setTitle('');
+      setDescription('');
+      setResourceLink('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -361,6 +389,83 @@ export const StepModal: React.FC<StepModalProps> = ({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+interface DeleteConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  itemTitle?: string;
+  confirmLabel?: string;
+}
+
+export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  itemTitle,
+  confirmLabel = 'Delete'
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        className="bg-white rounded-md p-5 sm:p-7 max-w-md w-full shadow-2xl relative border border-slate-200 animate-in fade-in zoom-in-95"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 text-[#8a8ca3] hover:text-[#1a1c2e] p-1 rounded-md hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+            <Trash2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-[#1a1c2e]">{title}</h3>
+            {itemTitle && <p className="text-xs text-rose-600 font-semibold truncate max-w-xs">{itemTitle}</p>}
+          </div>
+        </div>
+
+        <p className="text-xs sm:text-sm text-[#5a5c73] mb-6 leading-relaxed">
+          {message}
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#1a1c2e] text-xs sm:text-sm font-semibold rounded-md transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Trash2 className="w-4 h-4" />
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

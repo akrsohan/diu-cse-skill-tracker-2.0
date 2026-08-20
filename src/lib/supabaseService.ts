@@ -1,12 +1,106 @@
 import { supabase } from './supabase';
-import { Profile, UserProgress, Badge, Skill, RoadmapStep, FeedbackItem } from '../types';
-import { ADMIN_EMAIL, initialBadges, initialSkills, initialProfiles, initialCompletedSkills } from '../data/mockData';
+import { Field, Profile, UserProgress, Badge, Skill, RoadmapStep, FeedbackItem } from '../types';
+import { ADMIN_EMAIL, initialBadges, initialFields, initialSkills, initialRoadmapSteps, initialProfiles, initialCompletedSkills } from '../data/mockData';
 
 // Local storage keys for resilient caching
 const STORAGE_PROFILES_KEY = 'skilltrack_profiles_cache';
 const STORAGE_PROGRESS_KEY = 'skilltrack_progress_cache';
 const STORAGE_COMPLETED_KEY = 'skilltrack_completed_progress_cache';
 const STORAGE_BADGES_KEY = 'skilltrack_badges_cache';
+export const STORAGE_FIELDS_KEY = 'skilltrack_fields_storage_v1';
+export const STORAGE_SKILLS_KEY = 'skilltrack_skills_storage_v1';
+export const STORAGE_ROADMAP_STEPS_KEY = 'skilltrack_roadmap_steps_storage_v1';
+
+export function getStoredFields(): Field[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_FIELDS_KEY);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const hasGeneral = parsed.some((f: Field) => f.id === 'field-general' || f.name.toLowerCase() === 'general');
+        if (!hasGeneral) {
+          const generalField = initialFields.find(f => f.id === 'field-general') || {
+            id: 'field-general',
+            name: 'General',
+            description: 'Foundational computer science, developer tools, Git, Linux, problem solving and core basics',
+            icon: '🎯',
+            color: '#6366f1'
+          };
+          const merged = [generalField, ...parsed];
+          saveStoredFields(merged);
+          return merged;
+        }
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return initialFields;
+}
+
+export function saveStoredFields(fieldsList: Field[]) {
+  try {
+    localStorage.setItem(STORAGE_FIELDS_KEY, JSON.stringify(fieldsList));
+  } catch (e) {}
+}
+
+export function getStoredSkills(): Skill[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_SKILLS_KEY);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const hasLinux = parsed.some((s: Skill) => s.id === 'skill-linux');
+        if (!hasLinux) {
+          const linuxSkill = initialSkills.find(s => s.id === 'skill-linux');
+          if (linuxSkill) {
+            const updated = [...parsed, linuxSkill];
+            saveStoredSkills(updated);
+            return updated;
+          }
+        }
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return initialSkills;
+}
+
+export function saveStoredSkills(skillsList: Skill[]) {
+  try {
+    localStorage.setItem(STORAGE_SKILLS_KEY, JSON.stringify(skillsList));
+  } catch (e) {}
+}
+
+export function getStoredRoadmapSteps(): Record<string, RoadmapStep[]> {
+  try {
+    const raw = localStorage.getItem(STORAGE_ROADMAP_STEPS_KEY);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (!parsed['skill-linux'] && initialRoadmapSteps['skill-linux']) {
+          parsed['skill-linux'] = initialRoadmapSteps['skill-linux'];
+          saveStoredRoadmapSteps(parsed);
+        }
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return initialRoadmapSteps;
+}
+
+export function saveStoredRoadmapSteps(stepsMap: Record<string, RoadmapStep[]>) {
+  try {
+    localStorage.setItem(STORAGE_ROADMAP_STEPS_KEY, JSON.stringify(stepsMap));
+  } catch (e) {}
+}
+
+export function resetAllDataToDefaults() {
+  try {
+    localStorage.removeItem(STORAGE_FIELDS_KEY);
+    localStorage.removeItem(STORAGE_SKILLS_KEY);
+    localStorage.removeItem(STORAGE_ROADMAP_STEPS_KEY);
+  } catch (e) {}
+}
 
 export function getStoredCompletedProgress(): UserProgress[] {
   try {

@@ -24,7 +24,7 @@ import { getMainName } from './lib/nameHelper';
 import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
-import { SkillModal, FieldModal, StepModal } from './components/AdminModals';
+import { SkillModal, FieldModal, StepModal, DeleteConfirmModal } from './components/AdminModals';
 import { PasswordRecoveryModal } from './components/PasswordRecoveryModal';
 import { AuthLoadingScreen } from './components/AuthLoadingScreen';
 import { FeedbackModal } from './components/FeedbackModal';
@@ -45,7 +45,14 @@ import {
   getUserBadges,
   getAdminStats,
   uploadAvatarImage,
-  getAllFeedback
+  getAllFeedback,
+  getStoredFields,
+  saveStoredFields,
+  getStoredSkills,
+  saveStoredSkills,
+  getStoredRoadmapSteps,
+  saveStoredRoadmapSteps,
+  resetAllDataToDefaults
 } from './lib/supabaseService';
 import { 
   CheckCircle2, 
@@ -80,7 +87,8 @@ import {
   Eye,
   EyeOff,
   Link2,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 
 // Helper to format social contact links into working URLs
@@ -133,10 +141,10 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // App Data State (Fields and skills remain seeded as requested)
-  const [fields, setFields] = useState<Field[]>(initialFields);
-  const [skills, setSkills] = useState<Skill[]>(initialSkills);
-  const [roadmapSteps, setRoadmapSteps] = useState<Record<string, RoadmapStep[]>>(initialRoadmapSteps);
+  // App Data State (Persistent in local storage, synced with defaults)
+  const [fields, setFields] = useState<Field[]>(() => getStoredFields());
+  const [skills, setSkills] = useState<Skill[]>(() => getStoredSkills());
+  const [roadmapSteps, setRoadmapSteps] = useState<Record<string, RoadmapStep[]>>(() => getStoredRoadmapSteps());
   const [badges] = useState<Badge[]>(initialBadges);
   
   // Live Profiles & Progress State from Supabase
@@ -192,6 +200,19 @@ export default function App() {
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [editingField, setEditingField] = useState<Field | null>(null);
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    itemTitle?: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   // Filter state for Discover
   const [fieldFilter, setFieldFilter] = useState<string | null>(null);
@@ -1037,13 +1058,14 @@ export default function App() {
 
   // Admin Add/Edit Skill
   const handleSaveSkill = (skillData: Partial<Skill>) => {
+    let updatedSkills: Skill[];
     if (editingSkill) {
-      setSkills(prev => prev.map(s => s.id === editingSkill.id ? { ...s, ...skillData } as Skill : s));
+      updatedSkills = skills.map(s => s.id === editingSkill.id ? { ...s, ...skillData } as Skill : s);
       showToast(`Updated skill: ${skillData.name}`);
     } else {
       const newSkill: Skill = {
         id: `skill-${Date.now()}`,
-        field_id: skillData.field_id || 'field-1',
+        field_id: skillData.field_id || (fields[0]?.id || 'field-1'),
         name: skillData.name || 'New Skill',
         description: skillData.description || '',
         order_index: skills.length + 1,
@@ -1054,45 +1076,78 @@ export default function App() {
         learner_count: 0,
         step_count: 3
       };
-      setSkills(prev => [...prev, newSkill]);
+      updatedSkills = [...skills, newSkill];
       showToast(`Added new skill: ${newSkill.name}`);
     }
+    setSkills(updatedSkills);
+    saveStoredSkills(updatedSkills);
     setIsSkillModalOpen(false);
     setEditingSkill(null);
   };
 
   const handleDeleteSkill = (skillId: string) => {
     const skillToDelete = skills.find(s => s.id === skillId);
-    if (confirm(`Are you sure you want to delete "${skillToDelete?.name}"?`)) {
-      setSkills(prev => prev.filter(s => s.id !== skillId));
-      showToast(`Skill deleted`);
-    }
+    if (!skillToDelete) return;
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Skill Track',
+      itemTitle: skillToDelete.name,
+      message: `Are you sure you want to permanently delete "${skillToDelete.name}"? This will also remove its associated roadmap steps.`,
+      confirmLabel: 'Delete Skill',
+      onConfirm: () => {
+        const updatedSkills = skills.filter(s => s.id !== skillId);
+        setSkills(updatedSkills);
+        saveStoredSkills(updatedSkills);
+
+        // Clean up roadmap steps for this skill
+        const updatedSteps = { ...roadmapSteps };
+        delete updatedSteps[skillId];
+        setRoadmapSteps(updatedSteps);
+        saveStoredRoadmapSteps(updatedSteps);
+
+        showToast(`Skill "${skillToDelete.name}" deleted`);
+      }
+    });
   };
 
   const handleSaveField = (fieldData: Partial<Field>) => {
+    let updatedFields: Field[];
     if (editingField) {
-      setFields(prev => prev.map(f => f.id === editingField.id ? { ...f, ...fieldData } as Field : f));
+      updatedFields = fields.map(f => f.id === editingField.id ? { ...f, ...fieldData } as Field : f);
       showToast(`Updated field: ${fieldData.name}`);
     } else {
       const newField: Field = {
         id: fieldData.id || `field-${Date.now()}`,
         name: fieldData.name || 'New Field',
         description: fieldData.description || '',
-        icon: fieldData.icon || '💻'
+        icon: fieldData.icon || '💻',
+        color: fieldData.color || '#00b894'
       };
-      setFields(prev => [...prev, newField]);
+      updatedFields = [...fields, newField];
       showToast(`Added new field: ${newField.name}`);
     }
+    setFields(updatedFields);
+    saveStoredFields(updatedFields);
     setIsFieldModalOpen(false);
     setEditingField(null);
   };
 
   const handleDeleteField = (fieldId: string) => {
     const fieldToDelete = fields.find(f => f.id === fieldId);
-    if (confirm(`Are you sure you want to delete category "${fieldToDelete?.name}"?`)) {
-      setFields(prev => prev.filter(f => f.id !== fieldId));
-      showToast(`Field category deleted`);
-    }
+    if (!fieldToDelete) return;
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Field Category',
+      itemTitle: fieldToDelete.name,
+      message: `Are you sure you want to permanently delete category "${fieldToDelete.name}"?`,
+      confirmLabel: 'Delete Category',
+      onConfirm: () => {
+        const updatedFields = fields.filter(f => f.id !== fieldId);
+        setFields(updatedFields);
+        saveStoredFields(updatedFields);
+        showToast(`Field category "${fieldToDelete.name}" deleted`);
+      }
+    });
   };
 
   // Admin Add Step
@@ -1106,21 +1161,52 @@ export default function App() {
       resource_link: stepData.resource_link
     };
 
-    setRoadmapSteps(prev => ({
-      ...prev,
-      [currentSkill.id]: [...(prev[currentSkill.id] || []), newStep]
-    }));
+    const updatedSteps = {
+      ...roadmapSteps,
+      [currentSkill.id]: [...(roadmapSteps[currentSkill.id] || []), newStep]
+    };
+    setRoadmapSteps(updatedSteps);
+    saveStoredRoadmapSteps(updatedSteps);
 
     setIsStepModalOpen(false);
     showToast(`Added step "${newStep.title}" to ${currentSkill.name}`);
   };
 
   const handleDeleteStep = (skillId: string, stepId: string) => {
-    setRoadmapSteps(prev => ({
-      ...prev,
-      [skillId]: (prev[skillId] || []).filter(st => st.id !== stepId)
-    }));
-    showToast(`Roadmap step deleted`);
+    const stepToDelete = (roadmapSteps[skillId] || []).find(st => st.id === stepId);
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Roadmap Step',
+      itemTitle: stepToDelete?.title || 'Roadmap Step',
+      message: `Are you sure you want to delete step "${stepToDelete?.title || ''}"?`,
+      confirmLabel: 'Delete Step',
+      onConfirm: () => {
+        const updatedSteps = {
+          ...roadmapSteps,
+          [skillId]: (roadmapSteps[skillId] || []).filter(st => st.id !== stepId)
+        };
+        setRoadmapSteps(updatedSteps);
+        saveStoredRoadmapSteps(updatedSteps);
+        showToast(`Roadmap step deleted`);
+      }
+    });
+  };
+
+  const handleResetToDefaults = () => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Reset to Defaults',
+      itemTitle: 'All categories, skills, and roadmaps',
+      message: 'Are you sure you want to restore all categories, skills, and roadmap steps to default seed data? All custom additions and deletions will be reset to default.',
+      confirmLabel: 'Reset All',
+      onConfirm: () => {
+        resetAllDataToDefaults();
+        setFields(initialFields);
+        setSkills(initialSkills);
+        setRoadmapSteps(initialRoadmapSteps);
+        showToast('All fields, skills, and roadmaps have been reset to defaults.');
+      }
+    });
   };
 
   if (isAuthLoading) {
@@ -2877,18 +2963,29 @@ export default function App() {
           ) : (
             <div className="content">
               
-              <div className="admin-header-row">
+              <div className="admin-header-row flex items-center justify-between flex-wrap gap-3">
                 <div className="section-title" style={{ margin: 0 }}>Admin dashboard</div>
-                <div 
-                  className="admin-add-btn cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5 select-none"
-                  onClick={() => {
-                    setEditingSkill(null);
-                    setIsSkillModalOpen(true);
-                  }}
-                  id="btn-admin-add-skill"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add new skill
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleResetToDefaults}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-[#1a1c2e] text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-[#e4e5ee]"
+                    title="Restore default fields, skills, and roadmap steps"
+                    id="btn-admin-reset-defaults"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#8a8ca3]" />
+                    <span>Reset Defaults</span>
+                  </button>
+                  <div 
+                    className="admin-add-btn cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5 select-none"
+                    onClick={() => {
+                      setEditingSkill(null);
+                      setIsSkillModalOpen(true);
+                    }}
+                    id="btn-admin-add-skill"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add new skill
+                  </div>
                 </div>
               </div>
 
@@ -3299,6 +3396,17 @@ export default function App() {
           onOpenSendFeedback={() => setIsFeedbackModalOpen(true)}
         />
       )}
+
+      {/* Admin Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteConfirmState.isOpen}
+        onClose={() => setDeleteConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={deleteConfirmState.onConfirm}
+        title={deleteConfirmState.title}
+        itemTitle={deleteConfirmState.itemTitle}
+        message={deleteConfirmState.message}
+        confirmLabel={deleteConfirmState.confirmLabel}
+      />
 
     </div>
   );
