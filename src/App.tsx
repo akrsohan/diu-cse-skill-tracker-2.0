@@ -2966,15 +2966,6 @@ export default function App() {
               <div className="admin-header-row flex items-center justify-between flex-wrap gap-3">
                 <div className="section-title" style={{ margin: 0 }}>Admin dashboard</div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleResetToDefaults}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-[#1a1c2e] text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-[#e4e5ee]"
-                    title="Restore default fields, skills, and roadmap steps"
-                    id="btn-admin-reset-defaults"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-[#8a8ca3]" />
-                    <span>Reset Defaults</span>
-                  </button>
                   <div 
                     className="admin-add-btn cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5 select-none"
                     onClick={() => {

@@ -16,20 +16,7 @@ export function getStoredFields(): Field[] {
     const raw = localStorage.getItem(STORAGE_FIELDS_KEY);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const hasGeneral = parsed.some((f: Field) => f.id === 'field-general' || f.name.toLowerCase() === 'general');
-        if (!hasGeneral) {
-          const generalField = initialFields.find(f => f.id === 'field-general') || {
-            id: 'field-general',
-            name: 'General',
-            description: 'Foundational computer science, developer tools, Git, Linux, problem solving and core basics',
-            icon: '🎯',
-            color: '#6366f1'
-          };
-          const merged = [generalField, ...parsed];
-          saveStoredFields(merged);
-          return merged;
-        }
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -48,16 +35,7 @@ export function getStoredSkills(): Skill[] {
     const raw = localStorage.getItem(STORAGE_SKILLS_KEY);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const hasLinux = parsed.some((s: Skill) => s.id === 'skill-linux');
-        if (!hasLinux) {
-          const linuxSkill = initialSkills.find(s => s.id === 'skill-linux');
-          if (linuxSkill) {
-            const updated = [...parsed, linuxSkill];
-            saveStoredSkills(updated);
-            return updated;
-          }
-        }
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -77,10 +55,6 @@ export function getStoredRoadmapSteps(): Record<string, RoadmapStep[]> {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
-        if (!parsed['skill-linux'] && initialRoadmapSteps['skill-linux']) {
-          parsed['skill-linux'] = initialRoadmapSteps['skill-linux'];
-          saveStoredRoadmapSteps(parsed);
-        }
         return parsed;
       }
     }
