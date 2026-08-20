@@ -69,34 +69,34 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
       }}
     >
       <div 
-        className="bg-white border-2 border-emerald-100 rounded-3xl p-6 sm:p-9 max-w-2xl w-full my-auto shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col gap-6"
+        className="bg-white border-2 border-emerald-100 rounded-md p-6 sm:p-8 max-w-2xl w-full my-auto shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col gap-5"
         id="add-time-modal-container"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-5 right-5 sm:top-6 sm:right-6 text-gray-400 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-10"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 text-gray-400 hover:text-gray-900 p-1.5 rounded-md hover:bg-gray-100 transition-colors cursor-pointer z-10"
           title="Close dialog"
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Header with Emerald Badge */}
-        <div className="flex items-center gap-4 pt-2 pr-8">
-          <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center text-3xl font-black shadow-lg shrink-0 ring-4 ring-emerald-100">
-            <Plus className="w-8 h-8" />
+        <div className="flex items-center gap-4 pt-1 pr-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-md bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-xs shrink-0">
+            <Plus className="w-7 h-7" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-xs">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Deadline Extension
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-xs">
+                <Sparkles className="w-3 h-3 text-emerald-600" /> Deadline Extension
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1a1c2e] leading-tight tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-[#1a1c2e] leading-tight tracking-tight">
               Add More Time
             </h2>
-            <p className="text-sm sm:text-base text-gray-500 font-medium mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-0.5">
               Extend duration for <b className="text-emerald-700 font-bold">{skillName}</b>
             </p>
           </div>
@@ -106,9 +106,9 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           {/* Add Days Input Card (Teal/Emerald Theme) */}
-          <div className="bg-gradient-to-br from-emerald-50/90 via-emerald-50/50 to-teal-50/70 p-5 border-2 border-emerald-200 rounded-2xl flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg">
+          <div className="bg-emerald-50/60 p-4 sm:p-5 border border-emerald-200 rounded-md flex flex-col justify-between shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-sm">
                 ADD DAYS
               </span>
               <span className="text-xs font-bold text-emerald-600">+24 hrs / day</span>
@@ -118,10 +118,10 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setExtraDays(Math.max(0, validDays - 1))}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border-2 border-emerald-200 text-emerald-700 font-black flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 text-lg"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-md bg-white border border-emerald-200 text-emerald-700 font-black flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 text-base"
                 title="Decrease 1 day"
               >
-                <Minus className="w-5 h-5" />
+                <Minus className="w-4 h-4" />
               </button>
 
               <div className="flex items-baseline justify-center gap-1.5 flex-1 min-w-0 py-1">
@@ -145,18 +145,18 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setExtraDays(validDays + 1)}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-600 text-white font-black flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-200 cursor-pointer active:scale-95 shrink-0 text-lg"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-md bg-emerald-600 text-white font-black flex items-center justify-center hover:bg-emerald-700 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 text-base"
                 title="Increase 1 day"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Add Hours Input Card (Cyan/Sky Theme) */}
-          <div className="bg-gradient-to-br from-cyan-50/90 via-cyan-50/50 to-blue-50/70 p-5 border-2 border-cyan-200 rounded-2xl flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-black uppercase tracking-wider text-cyan-800 bg-cyan-100 px-3 py-1 rounded-lg">
+          <div className="bg-cyan-50/60 p-4 sm:p-5 border border-cyan-200 rounded-md flex flex-col justify-between shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-black uppercase tracking-wider text-cyan-800 bg-cyan-100 px-2.5 py-1 rounded-sm">
                 ADD HOURS
               </span>
               <span className="text-xs font-bold text-cyan-600">+1 hr each</span>
@@ -166,10 +166,10 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setExtraHours(Math.max(0, validHours - 1))}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border-2 border-cyan-200 text-cyan-700 font-black flex items-center justify-center hover:bg-cyan-600 hover:text-white hover:border-cyan-600 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 text-lg"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-md bg-white border border-cyan-200 text-cyan-700 font-black flex items-center justify-center hover:bg-cyan-600 hover:text-white hover:border-cyan-600 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 text-base"
                 title="Decrease 1 hour"
               >
-                <Minus className="w-5 h-5" />
+                <Minus className="w-4 h-4" />
               </button>
 
               <div className="flex items-baseline justify-center gap-1.5 flex-1 min-w-0 py-1">
@@ -192,10 +192,10 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setExtraHours(Math.min(48, validHours + 1))}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-cyan-600 text-white font-black flex items-center justify-center hover:bg-cyan-700 transition-all shadow-md shadow-cyan-200 cursor-pointer active:scale-95 shrink-0 text-lg"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-md bg-cyan-600 text-white font-black flex items-center justify-center hover:bg-cyan-700 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 text-base"
                 title="Increase 1 hour"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -203,7 +203,7 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
         </div>
 
         {/* Colorful Quick Presets */}
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <div className="text-xs sm:text-sm font-bold text-gray-500 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-gray-800 font-extrabold">
               <Flame className="w-4 h-4 text-emerald-600" /> Quick Presets:
@@ -221,9 +221,9 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
                     setExtraDays(btn.d);
                     setExtraHours(btn.h);
                   }}
-                  className={`py-2.5 px-2 text-xs sm:text-sm font-black rounded-xl border-2 transition-all cursor-pointer text-center leading-tight ${
+                  className={`py-2 px-2 text-xs font-bold rounded-md border transition-all cursor-pointer text-center leading-tight ${
                     isSelected
-                      ? `bg-gradient-to-r ${btn.color} text-white border-transparent shadow-lg scale-103 ring-2 ring-emerald-400`
+                      ? `bg-gradient-to-r ${btn.color} text-white border-transparent shadow-sm scale-102`
                       : `${btn.bg} shadow-xs`
                   }`}
                 >
@@ -235,31 +235,31 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
         </div>
 
         {/* Preview of Extended Deadline */}
-        <div className={`rounded-2xl p-4 sm:p-5 transition-all shadow-md ${
+        <div className={`rounded-md p-4 sm:p-5 transition-all shadow-xs ${
           isValid 
-            ? 'bg-gradient-to-br from-[#161828] via-[#1d2d3d] to-[#161828] text-white border-2 border-emerald-400/50' 
-            : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 text-emerald-950'
+            ? 'bg-[#161828] text-white border border-emerald-400/50' 
+            : 'bg-emerald-50 border border-emerald-300 text-emerald-950'
         }`}>
           {isValid ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2 text-sm sm:text-base font-bold">
                 <span className="flex items-center gap-2 text-emerald-400">
-                  <Clock className="w-5 h-5" /> Added Time:
+                  <Clock className="w-4 h-4" /> Added Time:
                 </span>
-                <span className="text-lg sm:text-xl font-black text-amber-300">
+                <span className="text-base sm:text-lg font-black text-amber-300">
                   +{validDays > 0 ? `${validDays} Day${validDays > 1 ? 's' : ''} ` : ''}
                   {validHours > 0 ? `${validHours} Hour${validHours > 1 ? 's' : ''}` : ''}
                   {' '}(+{totalExtraHours} hours)
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-white/90 font-medium pt-2 border-t border-white/20">
-                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>New Target: <b className="text-white font-extrabold">{formattedNewDeadline}</b></span>
+              <div className="flex items-center gap-2 text-xs text-white/90 font-medium pt-2 border-t border-white/20">
+                <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>New Target: <b className="text-white font-bold">{formattedNewDeadline}</b></span>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold text-emerald-900">
-              <Clock className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-900">
+              <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>Enter or tap days/hours to add to this challenge.</span>
             </div>
           )}
@@ -270,7 +270,7 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:flex-1 py-3.5 sm:py-4 px-5 bg-white border-2 border-gray-200 rounded-2xl font-bold text-sm sm:text-base text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            className="w-full sm:flex-1 py-3 px-5 bg-white border border-gray-300 rounded-md font-bold text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -278,14 +278,14 @@ export const AddTimeModal: React.FC<AddTimeModalProps> = ({
             type="button"
             disabled={!isValid}
             onClick={handleConfirm}
-            className={`w-full sm:flex-[1.6] py-3.5 sm:py-4 px-6 rounded-2xl font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl ${
+            className={`w-full sm:flex-[1.6] py-3 px-6 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
               isValid 
-                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-[#37f0ff] text-white shadow-emerald-300 hover:scale-102 hover:opacity-95' 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs hover:opacity-95' 
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
             }`}
             id="btn-confirm-add-time"
           >
-            <Check className="w-5 h-5 text-white" />
+            <Check className="w-4 h-4 text-white" />
             Add Time to Challenge
           </button>
         </div>

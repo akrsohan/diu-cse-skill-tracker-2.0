@@ -2044,22 +2044,22 @@ export default function App() {
             <div className="w-full max-w-4xl mx-auto">
               
               {/* Header info */}
-              <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#e4e5ee] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xs">
+              <div className="bg-white rounded-md p-6 sm:p-7 border border-[#e4e5ee] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xs">
                 <div className="flex items-center gap-4">
                   <div 
-                    className="w-14 h-14 min-w-14 rounded-2xl text-white font-extrabold flex items-center justify-center text-xl shadow-md"
+                    className="w-14 h-14 min-w-14 rounded-md text-white font-extrabold flex items-center justify-center text-xl shadow-xs"
                     style={{ background: currentSkill.bg_color || '#6c5ce7' }}
                   >
                     {currentSkill.icon}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold text-2xl text-[#1a1c2e] leading-tight">{currentSkill.name}</h3>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7]">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-sm bg-[#f1eefe] text-[#6c5ce7]">
                         {currentSkill.difficulty || 'Beginner'}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-[#8a8ca3] max-w-xl leading-relaxed">{currentSkill.description}</p>
+                    <p className="text-xs sm:text-sm text-[#8a8ca3] max-w-2xl leading-relaxed whitespace-normal break-words">{currentSkill.description}</p>
                   </div>
                 </div>
 
@@ -2094,7 +2094,7 @@ export default function App() {
               </div>
 
               {currentSkillSteps.length === 0 ? (
-                <div className="bg-white rounded-2xl p-10 text-center text-[#8a8ca3] text-xs border border-[#e4e5ee]">
+                <div className="bg-white rounded-md p-8 text-center text-[#8a8ca3] text-xs border border-[#e4e5ee]">
                   No roadmap steps listed yet for this skill track.
                 </div>
               ) : (
@@ -2136,7 +2136,7 @@ export default function App() {
           <div className="content">
             
             {/* Real Stats Mini Grid */}
-            <div className="stat-mini-grid">
+            <div className="stat-mini-grid mb-6">
               <div className="stat-mini">
                 <div className="val">{currentUser.points}</div>
                 <div className="lbl">total points</div>
@@ -2159,26 +2159,29 @@ export default function App() {
 
             {/* Active Challenge Card */}
             {activeProgress && activeProgress.status === 'in_progress' ? (
-              <div className="active-card shadow-sm border border-[#e4e5ee]" id="dashboard-active-challenge-card">
+              <div className="active-card shadow-xs border border-[#e4e5ee]" id="dashboard-active-challenge-card">
                 
                 {/* Header info */}
                 <div className="active-card-top pb-4 border-b border-[#f0f1f7]">
                   <div className="active-card-title">
                     <span 
-                      className="w-12 h-12 rounded-2xl text-white font-extrabold flex items-center justify-center text-lg shadow-md"
+                      className="w-12 h-12 rounded-md text-white font-extrabold flex items-center justify-center text-lg shadow-xs"
                       style={{ background: skills.find(s => s.id === activeProgress.skill_id)?.bg_color || '#6c5ce7' }}
                     >
                       {skills.find(s => s.id === activeProgress.skill_id)?.icon || '⚡'}
                     </span>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4>{skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7]">
-                          Challenge
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#f1eefe] text-[#6c5ce7]">
+                          Active Challenge
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#e6faf5] text-[#00b894]">
+                          {skills.find(s => s.id === activeProgress.skill_id)?.difficulty || 'Sprint'}
                         </span>
                       </div>
-                      <p className="text-xs text-[#8a8ca3] mt-0.5">
-                        Finish all checkpoints before the deadline to earn points &amp; streak!
+                      <p className="text-xs text-[#8a8ca3] mt-1 whitespace-normal break-words leading-relaxed">
+                        {skills.find(s => s.id === activeProgress.skill_id)?.description || 'Finish all checkpoints before the deadline to earn points & streak!'}
                       </p>
                     </div>
                   </div>
@@ -2215,44 +2218,74 @@ export default function App() {
                   </div>
 
                   {/* Progress bar */}
-                  <div className="w-full bg-[#f0f1f7] h-2.5 rounded-full overflow-hidden border border-[#e4e5ee] mt-3">
+                  <div className="w-full bg-[#f0f1f7] h-2.5 rounded-sm overflow-hidden border border-[#e4e5ee] mt-3">
                     <div 
-                      className="bg-linear-to-r from-[#6c5ce7] to-[#a29bfe] h-full rounded-full transition-all duration-1000"
+                      className="bg-linear-to-r from-[#6c5ce7] to-[#a29bfe] h-full rounded-sm transition-all duration-1000"
                       style={{ width: `${timeRemaining.percent}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Steps Checklist */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="section-title" style={{ fontSize: '13px', margin: 0 }}>
-                      Roadmap Checkpoints
+                {/* Roadmap Curriculum & Milestones for Active Challenge */}
+                <div className="mb-6 pt-4 border-t border-[#f0f1f7]">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <div>
+                      <div className="section-title" style={{ fontSize: '14px', margin: 0 }}>
+                        Roadmap Curriculum &amp; Milestones
+                      </div>
+                      <p className="text-xs text-[#8a8ca3] mt-0.5">
+                        Follow each curriculum step and check off your completed milestones as you build.
+                      </p>
                     </div>
-                    <span className="text-xs text-[#8a8ca3] font-semibold">
-                      {(activeProgress.steps_completed || []).length} / {(roadmapSteps[activeProgress.skill_id] || []).length} Completed
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-2.5 py-1 bg-[#f7f8fc] border border-[#e4e5ee] rounded-sm text-[#1a1c2e]">
+                        {(activeProgress.steps_completed || []).length} / {(roadmapSteps[activeProgress.skill_id] || []).length} Steps Completed
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {(roadmapSteps[activeProgress.skill_id] || []).map((step, idx) => {
                       const isChecked = (activeProgress.steps_completed || []).includes(step.step_order);
                       return (
                         <div 
                           key={step.id}
                           onClick={() => handleToggleStep(step.step_order)}
-                          className={`p-3.5 rounded-xl border flex items-center gap-3.5 cursor-pointer transition-all ${isChecked ? 'bg-[#00b894]/8 border-[#00b894]/30 shadow-2xs' : 'bg-white border-[#e4e5ee] hover:border-[#6c5ce7] hover:bg-[#fafbff]'}`}
+                          className={`p-4 rounded-md border flex items-start gap-3.5 cursor-pointer transition-all ${isChecked ? 'bg-[#00b894]/8 border-[#00b894]/40 shadow-xs' : 'bg-white border-[#e4e5ee] hover:border-[#6c5ce7] hover:bg-[#fafbff]'}`}
                         >
-                          <div className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-extrabold transition-all ${isChecked ? 'bg-[#00b894] text-white shadow-xs' : 'border-2 border-[#c8cad6] text-transparent'}`}>
+                          <div className={`w-5 h-5 min-w-5 rounded-sm mt-0.5 flex items-center justify-center text-xs font-extrabold transition-all ${isChecked ? 'bg-[#00b894] text-white shadow-xs' : 'border-2 border-[#c8cad6] text-transparent'}`}>
                             ✓
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className={`text-xs font-bold ${isChecked ? 'text-[#00b894] line-through' : 'text-[#1a1c2e]'}`}>
-                              {idx + 1}. {step.title}
+                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                              <div className={`text-sm font-bold ${isChecked ? 'text-[#00b894] line-through' : 'text-[#1a1c2e]'}`}>
+                                Step {idx + 1}: {step.title}
+                              </div>
+                              {isChecked && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#00b894]/15 text-[#00b894]">
+                                  Completed
+                                </span>
+                              )}
                             </div>
+
                             {step.description && (
-                              <div className="text-[11px] text-[#8a8ca3] truncate mt-0.5">
+                              <p className={`text-xs leading-relaxed whitespace-normal break-words mt-1 ${isChecked ? 'text-[#00b894]/80' : 'text-[#5a5c73]'}`}>
                                 {step.description}
+                              </p>
+                            )}
+
+                            {step.resource_link && (
+                              <div className="mt-2.5">
+                                <a 
+                                  href={step.resource_link} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#6c5ce7] hover:underline"
+                                >
+                                  <BookOpen className="w-3.5 h-3.5" />
+                                  Documentation &amp; Learning Resource <ExternalLink className="w-3 h-3" />
+                                </a>
                               </div>
                             )}
                           </div>
@@ -2267,7 +2300,7 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-2.5">
                     <button 
                       onClick={handleCompleteActiveChallenge}
-                      className="px-6 py-3 bg-[#00b894] hover:bg-[#00a383] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#00b894]/25 flex items-center justify-center gap-2"
+                      className="px-5 py-3 bg-[#00b894] hover:bg-[#00a383] text-white text-xs font-bold rounded-md transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                       id="btn-complete-challenge"
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -2276,7 +2309,7 @@ export default function App() {
 
                     <button 
                       onClick={() => setIsAddTimeModalOpen(true)}
-                      className="px-4 py-3 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      className="px-4 py-3 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       id="btn-add-extra-time"
                     >
                       <Clock className="w-4 h-4 text-[#6c5ce7]" />
@@ -2286,7 +2319,7 @@ export default function App() {
 
                   <button 
                     onClick={() => setIsCancelModalOpen(true)}
-                    className="px-4 py-2.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 text-xs font-bold rounded-xl transition-colors text-center sm:text-right"
+                    className="px-4 py-2.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 text-xs font-bold rounded-md transition-colors text-center sm:text-right cursor-pointer"
                     id="btn-cancel-challenge"
                   >
                     Cancel Challenge
@@ -2295,17 +2328,17 @@ export default function App() {
 
               </div>
             ) : (
-              <div className="bg-white border border-[#e4e5ee] rounded-2xl p-8 mb-8 text-center shadow-xs">
-                <div className="w-12 h-12 rounded-2xl bg-[#6c5ce7]/10 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
+              <div className="bg-white border border-[#e4e5ee] rounded-md p-8 mb-8 text-center shadow-xs">
+                <div className="w-12 h-12 rounded-md bg-[#6c5ce7]/10 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
                   <Flame className="w-6 h-6" />
                 </div>
                 <h4 className="font-bold text-base text-[#1a1c2e] mb-1">No Active Timed Challenge</h4>
-                <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mb-4">
+                <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mb-4 whitespace-normal">
                   Select a skill track from the discover roadmaps and set your custom sprint deadline to earn +10 points.
                 </p>
                 <button 
                   onClick={() => setCurrentPage('discover')}
-                  className="px-5 py-2.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-[#6c5ce7]/20"
+                  className="px-5 py-2.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-md hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
                 >
                   Pick a Skill to Learn →
                 </button>
@@ -2333,9 +2366,9 @@ export default function App() {
                         >
                           {isUnlocked ? (badge.icon_symbol || '★') : '🔒'}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <h5>{badge.name}</h5>
-                          <p>{badge.description}</p>
+                          <p className="whitespace-normal break-words">{badge.description}</p>
                         </div>
                       </div>
                     );
@@ -2356,16 +2389,16 @@ export default function App() {
                           <div className="icon" style={{ background: sk.bg_color || '#e84393' }}>
                             {sk.icon || 'S'}
                           </div>
-                          <div className="info">
+                          <div className="info min-w-0 flex-1">
                             <h5>{sk.name}</h5>
-                            <p>Finished on time (+10 pts)</p>
+                            <p className="whitespace-normal break-words">Finished on time (+10 pts)</p>
                           </div>
-                          <div className="time-badge">Completed</div>
+                          <div className="time-badge rounded-sm">Completed</div>
                         </div>
                       );
                     })
                 ) : (
-                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center text-xs text-[#8a8ca3]">
+                  <div className="bg-white border border-[#e4e5ee] rounded-md p-6 text-center text-xs text-[#8a8ca3]">
                     No completed challenges yet. Finish your active sprint to earn your first completion badge!
                   </div>
                 )}
