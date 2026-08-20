@@ -349,12 +349,12 @@ export async function getAllProfiles(): Promise<Profile[]> {
     if (!error && data && Array.isArray(data) && data.length > 0) {
       const mapped = data.map((item: any) => ({
         id: item.id,
-        email: item.email,
-        full_name: item.full_name || 'Anonymous User',
+        email: item.email || (item.raw_user_meta_data?.email) || undefined,
+        full_name: item.full_name || (item.email ? item.email.split('@')[0] : 'Student (Profile Pending)'),
         avatar_url: item.avatar_url || undefined,
-        department: item.department || 'General',
+        department: item.department || 'N/A',
         roll_number: item.roll_number || 'N/A',
-        batch_number: item.batch_number || 'General',
+        batch_number: item.batch_number || 'N/A',
         fb_link: item.fb_link || undefined,
         telegram_link: item.telegram_link || undefined,
         whatsapp_link: item.whatsapp_link || undefined,

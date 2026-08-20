@@ -825,6 +825,7 @@ export default function App() {
     }
 
     const payload: Partial<Profile> = {
+      email: currentUser.email || undefined,
       full_name: setupFullName.trim() || currentUser.full_name,
       department: setupDepartment.trim() || currentUser.department,
       roll_number: setupRoll.trim() || currentUser.roll_number,
@@ -3106,22 +3107,52 @@ export default function App() {
                     <div>Actions</div>
                   </div>
 
-                  {profiles.map((p) => (
+                  {profiles.map((p) => {
+                    const displayName = p.full_name?.trim() || (p.email ? p.email.split('@')[0] : (p.roll_number && p.roll_number !== 'N/A' ? `Student (${p.roll_number})` : 'Student'));
+                    return (
                     <div key={p.id} className="admin-table-row">
                       <div className="flex flex-col">
                         <div className="font-bold flex items-center gap-2">
-                          {p.full_name}
+                          {displayName}
                           {p.is_admin && (
                             <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-0.5">
                               <Shield className="w-3 h-3" /> Admin
                             </span>
                           )}
                         </div>
-                        {p.email && (
+                        {p.email ? (
                           <div className="text-[11px] text-[#8a8ca3] font-normal">{p.email}</div>
+                        ) : p.roll_number && p.roll_number !== 'N/A' ? (
+                          <div className="text-[11px] text-slate-500 font-normal">Roll: {p.roll_number}</div>
+                        ) : (
+                          <div className="text-[11px] text-slate-400 font-normal italic">Email syncing...</div>
+                        )}
+                        {(p.fb_link || p.whatsapp_link || p.telegram_link) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            {p.fb_link && (
+                              <a href={p.fb_link.startsWith('http') ? p.fb_link : `https://${p.fb_link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 text-[10px] flex items-center gap-0.5">
+                                FB ↗
+                              </a>
+                            )}
+                            {p.whatsapp_link && (
+                              <a href={p.whatsapp_link.startsWith('http') ? p.whatsapp_link : `https://wa.me/${p.whatsapp_link.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-emerald-600 hover:text-emerald-700 text-[10px] flex items-center gap-0.5">
+                                WA ↗
+                              </a>
+                            )}
+                            {p.telegram_link && (
+                              <a href={p.telegram_link.startsWith('http') ? p.telegram_link : `https://t.me/${p.telegram_link.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-sky-500 hover:text-sky-700 text-[10px] flex items-center gap-0.5">
+                                TG ↗
+                              </a>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <div>{p.department || 'N/A'}</div>
+                      <div>
+                        <div>{p.department || 'N/A'}</div>
+                        {p.roll_number && p.roll_number !== 'N/A' && (
+                          <div className="text-[10px] text-slate-400">Roll: {p.roll_number}</div>
+                        )}
+                      </div>
                       <div>{p.batch_number || 'N/A'}</div>
                       <div className="font-bold">{p.points}</div>
                       <div>
@@ -3150,7 +3181,8 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
 
