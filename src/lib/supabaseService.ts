@@ -338,16 +338,31 @@ export async function ensureProfile(user: { id: string; email?: string; full_nam
 
 /**
  * Fetch all registered profiles from Supabase
+ * Sorted by newest registered user first, oldest last
  */
 export async function getAllProfiles(): Promise<Profile[]> {
   try {
-    const { data, error } = await supabase
+    let data: any[] | null = null;
+    let error: any = null;
+
+    // Try ordering by created_at descending (newest user first)
+    const res = await supabase
       .from('profiles')
       .select('*')
-      .order('points', { ascending: false });
+      .order('created_at', { ascending: false });
+
+    if (res.error) {
+      // Fallback if created_at column is missing
+      const fallback = await supabase.from('profiles').select('*');
+      data = fallback.data;
+      error = fallback.error;
+    } else {
+      data = res.data;
+      error = res.error;
+    }
 
     if (!error && data && Array.isArray(data) && data.length > 0) {
-      const mapped = data.map((item: any) => ({
+      const mapped: Profile[] = data.map((item: any) => ({
         id: item.id,
         email: item.email || (item.raw_user_meta_data?.email) || undefined,
         full_name: item.full_name || (item.email ? item.email.split('@')[0] : 'Student (Profile Pending)'),
@@ -367,6 +382,18 @@ export async function getAllProfiles(): Promise<Profile[]> {
         is_banned: Boolean(item.is_banned),
         created_at: item.created_at
       }));
+
+      // Sort client-side: newest registered user first, oldest last
+      mapped.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeA && timeB) {
+          return timeB - timeA; // Newest first
+        }
+        if (timeB && !timeA) return 1;
+        if (timeA && !timeB) return -1;
+        return 0;
+      });
 
       return mapped;
     }

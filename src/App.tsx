@@ -224,6 +224,7 @@ export default function App() {
 
   // Admin Tab State
   const [adminTab, setAdminTab] = useState<'users' | 'fields' | 'skills' | 'steps' | 'feedback'>('users');
+  const [adminUserSearch, setAdminUserSearch] = useState('');
 
   // Feedback Modals
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -619,6 +620,33 @@ export default function App() {
   const top1 = filteredLeaderboardProfiles[0];
   const top2 = filteredLeaderboardProfiles[1];
   const top3 = filteredLeaderboardProfiles[2];
+
+  // Admin Portal filtered and sorted users (Newest user first, oldest last)
+  const filteredAdminProfiles = useMemo(() => {
+    // Ensure sorted: newest created_at / registered first, oldest last
+    let list = [...profiles].sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (timeA && timeB) {
+        return timeB - timeA; // Newest first
+      }
+      if (timeB && !timeA) return 1;
+      if (timeA && !timeB) return -1;
+      return 0;
+    });
+
+    const q = adminUserSearch.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter(p => {
+      const name = (p.full_name || '').toLowerCase();
+      const email = (p.email || '').toLowerCase();
+      const roll = (p.roll_number || '').toLowerCase();
+      const dept = (p.department || '').toLowerCase();
+      const batch = (p.batch_number || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || roll.includes(q) || dept.includes(q) || batch.includes(q);
+    });
+  }, [profiles, adminUserSearch]);
 
   // ==========================================
   // HANDLERS
@@ -1523,29 +1551,15 @@ export default function App() {
                           <Building2 className="icon-leading" />
                           <input 
                             type="text"
-                            list="dept-datalist-options"
-                            className="input-styled"
+                            className="input-styled" 
                             placeholder="e.g. Department of CSE, SWE, EEE..."
                             value={setupDepartment}
                             onChange={(e) => setSetupDepartment(e.target.value)}
                             required
                             id="input-setup-dept"
+                            autoComplete="off"
                           />
-                          <datalist id="dept-datalist-options">
-                            <option value="Department of CSE" />
-                            <option value="Department of SWE" />
-                            <option value="Department of CIS" />
-                            <option value="Department of EEE" />
-                            <option value="Department of Civil Engineering" />
-                            <option value="Department of Pharmacy" />
-                            <option value="Department of BBA" />
-                            <option value="Department of English" />
-                            <option value="Department of Journalism" />
-                          </datalist>
                         </div>
-                        <p className="text-[11px] text-[#8a8ca3] mt-1">
-                          You can choose from suggestions or type your custom department name.
-                        </p>
                       </div>
 
                       <div>
@@ -1556,36 +1570,15 @@ export default function App() {
                           <Hash className="icon-leading" />
                           <input 
                             type="text"
-                            list="batch-datalist-options"
-                            className="input-styled"
-                            placeholder="e.g. Batch 55, Batch 56..."
+                            className="input-styled" 
+                            placeholder="e.g. Batch 55, Batch 56, 63..."
                             value={setupBatch}
                             onChange={(e) => setSetupBatch(e.target.value)}
                             required
                             id="input-setup-batch"
+                            autoComplete="off"
                           />
-                          <datalist id="batch-datalist-options">
-                            <option value="Batch 50" />
-                            <option value="Batch 51" />
-                            <option value="Batch 52" />
-                            <option value="Batch 53" />
-                            <option value="Batch 54" />
-                            <option value="Batch 55" />
-                            <option value="Batch 56" />
-                            <option value="Batch 57" />
-                            <option value="Batch 58" />
-                            <option value="Batch 59" />
-                            <option value="Batch 60" />
-                            <option value="Batch 61" />
-                            <option value="Batch 62" />
-                            <option value="Batch 63" />
-                            <option value="Batch 64" />
-                            <option value="Batch 65" />
-                          </datalist>
                         </div>
-                        <p className="text-[11px] text-[#8a8ca3] mt-1">
-                          Type your batch (e.g. Batch 55) for cohort ranking.
-                        </p>
                       </div>
                     </div>
 
@@ -3097,92 +3090,153 @@ export default function App() {
 
               {/* TAB 1: REAL USERS TABLE */}
               {adminTab === 'users' && (
-                <div className="admin-table">
-                  <div className="admin-table-head">
-                    <div>Name &amp; Email</div>
-                    <div>Department</div>
-                    <div>Batch</div>
-                    <div>Points</div>
-                    <div>Status</div>
-                    <div>Actions</div>
-                  </div>
-
-                  {profiles.map((p) => {
-                    const displayName = p.full_name?.trim() || (p.email ? p.email.split('@')[0] : (p.roll_number && p.roll_number !== 'N/A' ? `Student (${p.roll_number})` : 'Student'));
-                    return (
-                    <div key={p.id} className="admin-table-row">
-                      <div className="flex flex-col">
-                        <div className="font-bold flex items-center gap-2">
-                          {displayName}
-                          {p.is_admin && (
-                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-0.5">
-                              <Shield className="w-3 h-3" /> Admin
-                            </span>
-                          )}
-                        </div>
-                        {p.email ? (
-                          <div className="text-[11px] text-[#8a8ca3] font-normal">{p.email}</div>
-                        ) : p.roll_number && p.roll_number !== 'N/A' ? (
-                          <div className="text-[11px] text-slate-500 font-normal">Roll: {p.roll_number}</div>
-                        ) : (
-                          <div className="text-[11px] text-slate-400 font-normal italic">Email syncing...</div>
-                        )}
-                        {(p.fb_link || p.whatsapp_link || p.telegram_link) && (
-                          <div className="flex items-center gap-2 mt-1">
-                            {p.fb_link && (
-                              <a href={p.fb_link.startsWith('http') ? p.fb_link : `https://${p.fb_link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 text-[10px] flex items-center gap-0.5">
-                                FB ↗
-                              </a>
-                            )}
-                            {p.whatsapp_link && (
-                              <a href={p.whatsapp_link.startsWith('http') ? p.whatsapp_link : `https://wa.me/${p.whatsapp_link.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-emerald-600 hover:text-emerald-700 text-[10px] flex items-center gap-0.5">
-                                WA ↗
-                              </a>
-                            )}
-                            {p.telegram_link && (
-                              <a href={p.telegram_link.startsWith('http') ? p.telegram_link : `https://t.me/${p.telegram_link.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-sky-500 hover:text-sky-700 text-[10px] flex items-center gap-0.5">
-                                TG ↗
-                              </a>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div>{p.department || 'N/A'}</div>
-                        {p.roll_number && p.roll_number !== 'N/A' && (
-                          <div className="text-[10px] text-slate-400">Roll: {p.roll_number}</div>
-                        )}
-                      </div>
-                      <div>{p.batch_number || 'N/A'}</div>
-                      <div className="font-bold">{p.points}</div>
-                      <div>
-                        <span className={`admin-badge-role ${p.is_banned ? 'bg-red-100 text-red-600' : ''}`}>
-                          {p.is_banned ? 'Banned' : 'Active'}
+                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+                  {/* Search Bar & Header */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
+                    <div>
+                      <div className="text-sm font-bold text-[#1a1c2e] flex items-center gap-2">
+                        <span>Registered Students &amp; Users</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-100">
+                          {adminUserSearch.trim() ? `${filteredAdminProfiles.length} of ${profiles.length}` : `${profiles.length} total`}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <button 
-                          className="admin-action-btn hover:bg-slate-100"
-                          onClick={() => handleOpenUserProfile(p.id)}
-                        >
-                          View
-                        </button>
-                        {p.is_admin || p.id === currentUser?.id || (p.email || '').toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() ? (
-                          <span className="text-[11px] text-[#8a8ca3] font-medium italic px-2 py-1 select-none">
-                            Protected
-                          </span>
-                        ) : (
-                          <button 
-                            className="admin-action-btn danger hover:bg-red-50"
-                            onClick={() => handleBanToggle(p.id)}
+                      <p className="text-xs text-[#8a8ca3] mt-0.5">
+                        Newest accounts appear at the top. Search instantly by name, email, or student roll.
+                      </p>
+                    </div>
+
+                    {/* Search Input Box */}
+                    <div className="w-full sm:w-80">
+                      <div className="search-wrapper">
+                        <span className="search-icon-inside">
+                          <Search className="w-4 h-4" />
+                        </span>
+                        <input 
+                          type="text"
+                          value={adminUserSearch}
+                          onChange={(e) => setAdminUserSearch(e.target.value)}
+                          placeholder="Search by name, email, or roll..."
+                          className="search-input-field !h-10.5 !text-sm"
+                          style={{ paddingLeft: '44px', paddingRight: adminUserSearch ? '36px' : '16px' }}
+                          id="admin-user-search-input"
+                        />
+                        {adminUserSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setAdminUserSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer z-10 transition-colors"
+                            title="Clear search"
                           >
-                            {p.is_banned ? 'Unban' : 'Ban'}
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                     </div>
-                  );
-                  })}
+                  </div>
+
+                  {filteredAdminProfiles.length === 0 ? (
+                    <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center my-2">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <div className="text-sm font-bold text-slate-700">No matching users found</div>
+                      <p className="text-xs text-slate-400 mt-1">
+                        No user matched "{adminUserSearch}". You can search by partial name, full email address, or student roll number.
+                      </p>
+                      <button
+                        onClick={() => setAdminUserSearch('')}
+                        className="mt-3 px-3.5 py-1.5 bg-[#6c5ce7] hover:bg-[#5b4bc4] text-xs font-semibold text-white rounded-lg transition-colors shadow-xs"
+                      >
+                        Clear Search Filter
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="admin-table">
+                      <div className="admin-table-head">
+                        <div>Name &amp; Email</div>
+                        <div>Department</div>
+                        <div>Batch</div>
+                        <div>Points</div>
+                        <div>Status</div>
+                        <div>Actions</div>
+                      </div>
+
+                      {filteredAdminProfiles.map((p) => {
+                        const displayName = p.full_name?.trim() || (p.email ? p.email.split('@')[0] : (p.roll_number && p.roll_number !== 'N/A' ? `Student (${p.roll_number})` : 'Student'));
+                        return (
+                        <div key={p.id} className="admin-table-row">
+                          <div className="flex flex-col">
+                            <div className="font-bold flex items-center gap-2">
+                              {displayName}
+                              {p.is_admin && (
+                                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-0.5">
+                                  <Shield className="w-3 h-3" /> Admin
+                                </span>
+                              )}
+                            </div>
+                            {p.email ? (
+                              <div className="text-[11px] text-[#8a8ca3] font-normal">{p.email}</div>
+                            ) : p.roll_number && p.roll_number !== 'N/A' ? (
+                              <div className="text-[11px] text-slate-500 font-normal">Roll: {p.roll_number}</div>
+                            ) : (
+                              <div className="text-[11px] text-slate-400 font-normal italic">Email syncing...</div>
+                            )}
+                            {(p.fb_link || p.whatsapp_link || p.telegram_link) && (
+                              <div className="flex items-center gap-2 mt-1">
+                                {p.fb_link && (
+                                  <a href={p.fb_link.startsWith('http') ? p.fb_link : `https://${p.fb_link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 text-[10px] flex items-center gap-0.5">
+                                    FB ↗
+                                  </a>
+                                )}
+                                {p.whatsapp_link && (
+                                  <a href={p.whatsapp_link.startsWith('http') ? p.whatsapp_link : `https://wa.me/${p.whatsapp_link.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-emerald-600 hover:text-emerald-700 text-[10px] flex items-center gap-0.5">
+                                    WA ↗
+                                  </a>
+                                )}
+                                {p.telegram_link && (
+                                  <a href={p.telegram_link.startsWith('http') ? p.telegram_link : `https://t.me/${p.telegram_link.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-sky-500 hover:text-sky-700 text-[10px] flex items-center gap-0.5">
+                                    TG ↗
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div>{p.department || 'N/A'}</div>
+                            {p.roll_number && p.roll_number !== 'N/A' && (
+                              <div className="text-[10px] text-slate-400">Roll: {p.roll_number}</div>
+                            )}
+                          </div>
+                          <div>{p.batch_number || 'N/A'}</div>
+                          <div className="font-bold">{p.points}</div>
+                          <div>
+                            <span className={`admin-badge-role ${p.is_banned ? 'bg-red-100 text-red-600' : ''}`}>
+                              {p.is_banned ? 'Banned' : 'Active'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              className="admin-action-btn hover:bg-slate-100"
+                              onClick={() => handleOpenUserProfile(p.id)}
+                            >
+                              View
+                            </button>
+                            {p.is_admin || p.id === currentUser?.id || (p.email || '').toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() ? (
+                              <span className="text-[11px] text-[#8a8ca3] font-medium italic px-2 py-1 select-none">
+                                Protected
+                              </span>
+                            ) : (
+                              <button 
+                                className="admin-action-btn danger hover:bg-red-50"
+                                onClick={() => handleBanToggle(p.id)}
+                              >
+                                {p.is_banned ? 'Unban' : 'Ban'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
