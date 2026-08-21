@@ -1,4 +1,4 @@
-import { Field, Skill, RoadmapStep, Badge, Profile, UserProgress } from '../types';
+import { Field, Skill, RoadmapStep, Badge, Profile, UserProgress, SkillResource } from '../types';
 
 export const initialFields: Field[] = [
   {
@@ -367,3 +367,122 @@ export const initialProfiles: Profile[] = [];
 export const initialCompletedSkills: Record<string, { skillName: string; icon: string; bg: string; duration: string; completedAt: string }[]> = {};
 
 export const initialActiveProgress: UserProgress | null = null;
+
+export const initialSkillResources: Record<string, SkillResource[]> = {
+  'skill-html': [
+    {
+      id: 'res-html-1',
+      skill_id: 'skill-html',
+      title: 'MDN Web Docs — HTML: HyperText Markup Language',
+      type: 'document',
+      format: 'link',
+      url: 'https://developer.mozilla.org/en-US/docs/Web/HTML',
+      description: 'Official Mozilla Developer Network specification, elements index, and semantic guide.'
+    },
+    {
+      id: 'res-html-2',
+      skill_id: 'skill-html',
+      title: 'HTML5 Semantic Elements & Forms CheatSheet (PDF / Drive)',
+      type: 'document',
+      format: 'drive',
+      url: 'https://drive.google.com/drive/folders/html5-cheat-sheets',
+      description: 'Comprehensive quick reference PDF sheet covering all modern tags, ARIA attributes, and inputs.'
+    },
+    {
+      id: 'res-html-3',
+      skill_id: 'skill-html',
+      title: 'Traversy Media — HTML Crash Course For Beginners',
+      type: 'reference',
+      format: 'youtube',
+      url: 'https://www.youtube.com/watch?v=UB1O30fR-EE',
+      description: 'Complete hands-on beginner crash course building semantic web pages from scratch.'
+    },
+    {
+      id: 'res-html-4',
+      skill_id: 'skill-html',
+      title: 'W3C HTML5 Official Living Standard',
+      type: 'reference',
+      format: 'article',
+      url: 'https://html.spec.whatwg.org/multipage/',
+      description: 'The definitive living standard and best practice documentation for web developers.'
+    }
+  ],
+  'skill-css': [
+    {
+      id: 'res-css-1',
+      skill_id: 'skill-css',
+      title: 'MDN CSS Reference & Styling Guide',
+      type: 'document',
+      format: 'link',
+      url: 'https://developer.mozilla.org/en-US/docs/Web/CSS',
+      description: 'Complete documentation for CSS selectors, box model, Flexbox, Grid, and animations.'
+    },
+    {
+      id: 'res-css-2',
+      skill_id: 'skill-css',
+      title: 'CSS Flexbox & Grid Master Visual Guide (PDF)',
+      type: 'document',
+      format: 'pdf',
+      url: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/',
+      description: 'Visual diagram breakdown of Flexbox and Grid container and child properties.'
+    },
+    {
+      id: 'res-css-3',
+      skill_id: 'skill-css',
+      title: 'FreeCodeCamp — CSS Tutorial - Zero to Hero',
+      type: 'reference',
+      format: 'youtube',
+      url: 'https://www.youtube.com/watch?v=1Rs2ND1ryYc',
+      description: 'Full modern CSS course including responsive design, variables, and animations.'
+    }
+  ],
+  'skill-js': [
+    {
+      id: 'res-js-1',
+      skill_id: 'skill-js',
+      title: 'JavaScript.info — The Modern JavaScript Tutorial',
+      type: 'document',
+      format: 'link',
+      url: 'https://javascript.info/',
+      description: 'From the basics to advanced topics with simple, but detailed explanations.'
+    },
+    {
+      id: 'res-js-2',
+      skill_id: 'skill-js',
+      title: 'JavaScript ES6+ Cheat Sheet & Handbook (PDF)',
+      type: 'document',
+      format: 'drive',
+      url: 'https://drive.google.com/drive/folders/js-modern-handbook',
+      description: 'Quick reference guide for closures, Promises, async/await, and array methods.'
+    },
+    {
+      id: 'res-js-3',
+      skill_id: 'skill-js',
+      title: 'Fireship — JavaScript in 100 Seconds',
+      type: 'reference',
+      format: 'youtube',
+      url: 'https://www.youtube.com/watch?v=DHjqpvDnNGE',
+      description: 'Fast-paced overview of the language, runtime environment, and ecosystem.'
+    }
+  ],
+  'skill-react': [
+    {
+      id: 'res-react-1',
+      skill_id: 'skill-react',
+      title: 'React Official Documentation (react.dev)',
+      type: 'document',
+      format: 'link',
+      url: 'https://react.dev',
+      description: 'The new official React documentation with interactive code sandboxes.'
+    },
+    {
+      id: 'res-react-2',
+      skill_id: 'skill-react',
+      title: 'Web Dev Simplified — Learn React in 30 Minutes',
+      type: 'reference',
+      format: 'youtube',
+      url: 'https://www.youtube.com/watch?v=hQAHSlTtcmY',
+      description: 'Quick starter guide covering state, props, JSX, and functional components.'
+    }
+  ]
+};

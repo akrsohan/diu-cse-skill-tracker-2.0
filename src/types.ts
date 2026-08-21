@@ -59,6 +59,18 @@ export interface RoadmapStep {
   description: string;
   step_order: number;
   resource_link?: string;
+  created_at?: string;
+}
+
+export interface SkillResource {
+  id: string;
+  skill_id: string;
+  title: string;
+  type: 'document' | 'reference'; // 'document' (PDF, Google Drive, Doc, Page) vs 'reference' (YouTube, Article, GitHub, Website)
+  format: 'pdf' | 'drive' | 'link' | 'youtube' | 'github' | 'article';
+  url: string;
+  description?: string;
+  created_at?: string;
 }
 
 export interface UserProgress {

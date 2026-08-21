@@ -6,7 +6,8 @@ import {
   Field, 
   RoadmapStep, 
   UserProgress, 
-  Badge 
+  Badge,
+  SkillResource
 } from './types';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { 
@@ -15,7 +16,8 @@ import {
   initialSkills, 
   initialRoadmapSteps, 
   initialBadges, 
-  initialProfiles
+  initialProfiles,
+  initialSkillResources
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -24,12 +26,14 @@ import { getMainName } from './lib/nameHelper';
 import { DeadlineModal } from './components/DeadlineModal';
 import { AddTimeModal } from './components/AddTimeModal';
 import { CancelChallengeModal } from './components/CancelChallengeModal';
-import { SkillModal, FieldModal, StepModal, DeleteConfirmModal } from './components/AdminModals';
+import { SkillModal, FieldModal, StepModal, ResourceModal, SqlCodeModal, DeleteConfirmModal } from './components/AdminModals';
 import { PasswordRecoveryModal } from './components/PasswordRecoveryModal';
 import { AuthLoadingScreen } from './components/AuthLoadingScreen';
 import { FeedbackModal } from './components/FeedbackModal';
 import { UserFeedbackHistoryModal } from './components/UserFeedbackHistoryModal';
 import { AdminFeedbackSection } from './components/AdminFeedbackSection';
+import { SkillResourcesSection } from './components/SkillResourcesSection';
+import { AdminRoadmapSection } from './components/AdminRoadmapSection';
 import { 
   getProfile,
   updateProfile,
@@ -52,6 +56,14 @@ import {
   saveStoredSkills,
   getStoredRoadmapSteps,
   saveStoredRoadmapSteps,
+  getStoredSkillResources,
+  saveStoredSkillResources,
+  getAllSkillResources,
+  addSkillResource,
+  deleteSkillResource,
+  fetchAllRoadmapSteps,
+  addRoadmapStepToDb,
+  deleteRoadmapStepFromDb,
   resetAllDataToDefaults
 } from './lib/supabaseService';
 import { 
@@ -145,6 +157,7 @@ export default function App() {
   const [fields, setFields] = useState<Field[]>(() => getStoredFields());
   const [skills, setSkills] = useState<Skill[]>(() => getStoredSkills());
   const [roadmapSteps, setRoadmapSteps] = useState<Record<string, RoadmapStep[]>>(() => getStoredRoadmapSteps());
+  const [skillResources, setSkillResources] = useState<Record<string, SkillResource[]>>(() => getStoredSkillResources());
   const [badges] = useState<Badge[]>(initialBadges);
   
   // Live Profiles & Progress State from Supabase
@@ -198,6 +211,8 @@ export default function App() {
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [editingField, setEditingField] = useState<Field | null>(null);
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
@@ -357,7 +372,18 @@ export default function App() {
       const liveStats = await getAdminStats();
       setAdminStats(liveStats);
 
-      // 4. Fetch specific user data if logged in
+      // 4. Fetch live Roadmap steps & Skill Resources
+      const liveSteps = await fetchAllRoadmapSteps();
+      if (liveSteps && Object.keys(liveSteps).length > 0) {
+        setRoadmapSteps(liveSteps);
+      }
+
+      const liveResources = await getAllSkillResources();
+      if (liveResources && Object.keys(liveResources).length > 0) {
+        setSkillResources(liveResources);
+      }
+
+      // 5. Fetch specific user data if logged in
       if (uid) {
         const userProf = await getProfile(uid);
         if (userProf) {
@@ -1180,7 +1206,7 @@ export default function App() {
   };
 
   // Admin Add Step
-  const handleAddStep = (stepData: Partial<RoadmapStep>) => {
+  const handleAddStep = async (stepData: Partial<RoadmapStep>) => {
     const newStep: RoadmapStep = {
       id: `step-${Date.now()}`,
       skill_id: currentSkill.id,
@@ -1190,15 +1216,16 @@ export default function App() {
       resource_link: stepData.resource_link
     };
 
+    const saved = await addRoadmapStepToDb(newStep);
     const updatedSteps = {
       ...roadmapSteps,
-      [currentSkill.id]: [...(roadmapSteps[currentSkill.id] || []), newStep]
+      [currentSkill.id]: [...(roadmapSteps[currentSkill.id] || []), saved]
     };
     setRoadmapSteps(updatedSteps);
     saveStoredRoadmapSteps(updatedSteps);
 
     setIsStepModalOpen(false);
-    showToast(`Added step "${newStep.title}" to ${currentSkill.name}`);
+    showToast(`Added step "${saved.title}" to ${currentSkill.name}`);
   };
 
   const handleDeleteStep = (skillId: string, stepId: string) => {
@@ -1209,7 +1236,8 @@ export default function App() {
       itemTitle: stepToDelete?.title || 'Roadmap Step',
       message: `Are you sure you want to delete step "${stepToDelete?.title || ''}"?`,
       confirmLabel: 'Delete Step',
-      onConfirm: () => {
+      onConfirm: async () => {
+        await deleteRoadmapStepFromDb(stepId, skillId);
         const updatedSteps = {
           ...roadmapSteps,
           [skillId]: (roadmapSteps[skillId] || []).filter(st => st.id !== stepId)
@@ -1217,6 +1245,45 @@ export default function App() {
         setRoadmapSteps(updatedSteps);
         saveStoredRoadmapSteps(updatedSteps);
         showToast(`Roadmap step deleted`);
+      }
+    });
+  };
+
+  // Admin Add Document / Reference Resource
+  const handleAddResource = async (resData: Omit<SkillResource, 'id'>) => {
+    try {
+      const created = await addSkillResource(resData);
+      const updated = {
+        ...skillResources,
+        [resData.skill_id]: [...(skillResources[resData.skill_id] || []), created]
+      };
+      setSkillResources(updated);
+      saveStoredSkillResources(updated);
+      setIsResourceModalOpen(false);
+      showToast(`Added "${created.title}" successfully!`);
+    } catch (err: any) {
+      showToast(`Error adding resource: ${err?.message || 'Unknown'}`);
+    }
+  };
+
+  // Admin Delete Document / Reference Resource
+  const handleDeleteResource = (resourceId: string, skillId: string) => {
+    const resToDelete = (skillResources[skillId] || []).find(r => r.id === resourceId);
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Learning Resource',
+      itemTitle: resToDelete?.title || 'Resource Material',
+      message: `Are you sure you want to delete "${resToDelete?.title || ''}"? Learners will no longer see this material.`,
+      confirmLabel: 'Delete Resource',
+      onConfirm: async () => {
+        await deleteSkillResource(resourceId, skillId);
+        const updated = {
+          ...skillResources,
+          [skillId]: (skillResources[skillId] || []).filter(r => r.id !== resourceId)
+        };
+        setSkillResources(updated);
+        saveStoredSkillResources(updated);
+        showToast('Resource deleted successfully.');
       }
     });
   };
@@ -2178,27 +2245,27 @@ export default function App() {
                   No roadmap steps listed yet for this skill track.
                 </div>
               ) : (
-                currentSkillSteps.map((st, idx) => (
-                  <div key={st.id} className="step-card" id={`step-card-${st.id}`}>
-                    <div className="step-num">{idx + 1}</div>
-                    <div className="step-body">
-                      <h5>{st.title}</h5>
-                      <p>{st.description}</p>
-                      {st.resource_link && (
-                        <a 
-                          href={st.resource_link} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="resource-link inline-flex items-center gap-1.5 text-xs font-bold text-[#6c5ce7] hover:underline mt-2.5"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          Official Documentation &amp; Reference <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
+                <div className="space-y-3">
+                  {currentSkillSteps.map((st, idx) => (
+                    <div key={st.id} className="step-card" id={`step-card-${st.id}`}>
+                      <div className="step-num">{idx + 1}</div>
+                      <div className="step-body">
+                        <h5>{st.title}</h5>
+                        <p>{st.description}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
+
+              {/* Dedicated Official Documentation & References Section */}
+              <SkillResourcesSection
+                skill={currentSkill}
+                resources={skillResources[currentSkill.id] || []}
+                isAdmin={Boolean(currentUser?.is_admin)}
+                onAddResource={() => setIsResourceModalOpen(true)}
+                onDeleteResource={(resId) => handleDeleteResource(resId, currentSkill.id)}
+              />
 
             </div>
 
@@ -2239,9 +2306,10 @@ export default function App() {
 
             {/* Active Challenge Card */}
             {activeProgress && activeProgress.status === 'in_progress' ? (
-              <div className="active-card shadow-xs border border-[#e4e5ee]" id="dashboard-active-challenge-card">
-                
-                {/* Header info */}
+              <>
+                <div className="active-card shadow-xs border border-[#e4e5ee]" id="dashboard-active-challenge-card">
+                  
+                  {/* Header info */}
                 <div className="active-card-top pb-4 border-b border-[#f0f1f7]">
                   <div className="active-card-title">
                     <span 
@@ -2353,21 +2421,6 @@ export default function App() {
                                 {step.description}
                               </p>
                             )}
-
-                            {step.resource_link && (
-                              <div className="mt-2.5">
-                                <a 
-                                  href={step.resource_link} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#6c5ce7] hover:underline"
-                                >
-                                  <BookOpen className="w-3.5 h-3.5" />
-                                  Documentation &amp; Learning Resource <ExternalLink className="w-3 h-3" />
-                                </a>
-                              </div>
-                            )}
                           </div>
                         </div>
                       );
@@ -2407,6 +2460,25 @@ export default function App() {
                 </div>
 
               </div>
+
+              {/* Official Documentation & Reference for Active Challenge */}
+              {(() => {
+                const activeSkillObj = skills.find(s => s.id === activeProgress.skill_id) || currentSkill;
+                return (
+                  <SkillResourcesSection
+                    skill={activeSkillObj}
+                    resources={skillResources[activeProgress.skill_id] || []}
+                    isAdmin={Boolean(currentUser?.is_admin)}
+                    onAddResource={() => {
+                      setSelectedSkillId(activeProgress.skill_id);
+                      setIsResourceModalOpen(true);
+                    }}
+                    onDeleteResource={(resId) => handleDeleteResource(resId, activeProgress.skill_id)}
+                    className="mb-8 mt-0"
+                  />
+                );
+              })()}
+              </>
             ) : (
               <div className="bg-white border border-[#e4e5ee] rounded-md p-8 mb-8 text-center shadow-xs">
                 <div className="w-12 h-12 rounded-md bg-[#6c5ce7]/10 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
@@ -3022,7 +3094,7 @@ export default function App() {
                   className={`admin-tab cursor-pointer select-none ${adminTab === 'steps' ? 'active' : ''}`}
                   onClick={() => setAdminTab('steps')}
                 >
-                  Roadmap steps
+                  Roadmaps &amp; Resources
                 </div>
                 <div 
                   className={`admin-tab cursor-pointer select-none flex items-center gap-1.5 ${adminTab === 'feedback' ? 'active' : ''}`}
@@ -3293,55 +3365,20 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 3: ROADMAP STEPS */}
+            {/* TAB 3: ROADMAP STEPS & RESOURCES */}
             {adminTab === 'steps' && (
-              <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                    <label className="text-xs font-bold text-[#4a4c63]">Select Skill Track:</label>
-                    <select 
-                      className="field-input py-2 px-3 text-xs mb-0 w-full sm:w-auto"
-                      value={selectedSkillId}
-                      onChange={(e) => setSelectedSkillId(e.target.value)}
-                    >
-                      {skills.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button
-                    onClick={() => setIsStepModalOpen(true)}
-                    className="w-full sm:w-auto px-3.5 py-2 bg-[#6c5ce7] text-white text-xs font-bold rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Step to {currentSkill.name}
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {currentSkillSteps.map((st, idx) => (
-                    <div key={st.id} className="p-3 sm:p-3.5 border border-[#e4e5ee] rounded-xl flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <div className="w-7 h-7 rounded-full bg-[#6c5ce7] text-white font-bold text-xs flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-xs text-[#1a1c2e] truncate">{st.title}</div>
-                          <div className="text-[11px] text-[#8a8ca3] line-clamp-2">{st.description}</div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteStep(currentSkill.id, st.id)}
-                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg text-xs shrink-0"
-                        title="Delete Step"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <AdminRoadmapSection
+                skills={skills}
+                fields={fields}
+                selectedSkillId={selectedSkillId}
+                onSelectSkillId={(id) => setSelectedSkillId(id)}
+                roadmapSteps={roadmapSteps}
+                skillResources={skillResources}
+                onOpenAddStep={() => setIsStepModalOpen(true)}
+                onOpenAddResource={() => setIsResourceModalOpen(true)}
+                onDeleteStep={handleDeleteStep}
+                onDeleteResource={handleDeleteResource}
+              />
             )}
 
             {/* TAB: FEEDBACK */}
@@ -3442,6 +3479,21 @@ export default function App() {
         skillId={currentSkill.id}
         skillName={currentSkill.name}
         nextOrder={currentSkillSteps.length + 1}
+      />
+
+      {/* Admin Resource / Document / Reference Add Modal */}
+      <ResourceModal
+        isOpen={isResourceModalOpen}
+        onClose={() => setIsResourceModalOpen(false)}
+        onSave={handleAddResource}
+        skillId={currentSkill.id}
+        skillName={currentSkill.name}
+      />
+
+      {/* Supabase SQL Code Schema Modal */}
+      <SqlCodeModal
+        isOpen={isSqlModalOpen}
+        onClose={() => setIsSqlModalOpen(false)}
       />
 
       {/* Password Recovery Modal */}

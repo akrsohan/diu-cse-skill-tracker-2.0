@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
-import { Field, Profile, UserProgress, Badge, Skill, RoadmapStep, FeedbackItem } from '../types';
-import { ADMIN_EMAIL, initialBadges, initialFields, initialSkills, initialRoadmapSteps, initialProfiles, initialCompletedSkills } from '../data/mockData';
+import { Field, Profile, UserProgress, Badge, Skill, RoadmapStep, FeedbackItem, SkillResource } from '../types';
+import { ADMIN_EMAIL, initialBadges, initialFields, initialSkills, initialRoadmapSteps, initialProfiles, initialCompletedSkills, initialSkillResources } from '../data/mockData';
 
 // Local storage keys for resilient caching
 const STORAGE_PROFILES_KEY = 'skilltrack_profiles_cache';
@@ -10,6 +10,7 @@ const STORAGE_BADGES_KEY = 'skilltrack_badges_cache';
 export const STORAGE_FIELDS_KEY = 'skilltrack_fields_storage_v1';
 export const STORAGE_SKILLS_KEY = 'skilltrack_skills_storage_v1';
 export const STORAGE_ROADMAP_STEPS_KEY = 'skilltrack_roadmap_steps_storage_v1';
+export const STORAGE_RESOURCES_KEY = 'skilltrack_resources_storage_v1';
 
 export function getStoredFields(): Field[] {
   try {
@@ -68,11 +69,31 @@ export function saveStoredRoadmapSteps(stepsMap: Record<string, RoadmapStep[]>) 
   } catch (e) {}
 }
 
+export function getStoredSkillResources(): Record<string, SkillResource[]> {
+  try {
+    const raw = localStorage.getItem(STORAGE_RESOURCES_KEY);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return initialSkillResources;
+}
+
+export function saveStoredSkillResources(resMap: Record<string, SkillResource[]>) {
+  try {
+    localStorage.setItem(STORAGE_RESOURCES_KEY, JSON.stringify(resMap));
+  } catch (e) {}
+}
+
 export function resetAllDataToDefaults() {
   try {
     localStorage.removeItem(STORAGE_FIELDS_KEY);
     localStorage.removeItem(STORAGE_SKILLS_KEY);
     localStorage.removeItem(STORAGE_ROADMAP_STEPS_KEY);
+    localStorage.removeItem(STORAGE_RESOURCES_KEY);
   } catch (e) {}
 }
 
@@ -1018,5 +1039,297 @@ export async function markFeedbackAsRead(feedbackId: string): Promise<{ success:
     console.error('[Supabase markFeedbackAsRead Exception]:', err);
     return { success: false, error: err?.message || 'Failed to update feedback status.' };
   }
+}
+
+/**
+ * =========================================================================
+ * SKILL RESOURCES & DOCUMENTATION (PDFs, Drive Links, Web Links, YT Tutorials)
+ * =========================================================================
+ */
+
+/**
+ * Fetch all resources (or resources for a specific skill)
+ */
+export async function getAllSkillResources(skillId?: string): Promise<Record<string, SkillResource[]>> {
+  const localMap = getStoredSkillResources();
+
+  try {
+    let query = supabase
+      .from('skill_resources')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (skillId) {
+      query = query.eq('skill_id', skillId);
+    }
+
+    const { data, error } = await query;
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      const mergedMap: Record<string, SkillResource[]> = { ...localMap };
+      
+      data.forEach((row: any) => {
+        const item: SkillResource = {
+          id: row.id,
+          skill_id: row.skill_id,
+          title: row.title,
+          type: row.type || 'document',
+          format: row.format || 'link',
+          url: row.url,
+          description: row.description || undefined,
+          created_at: row.created_at
+        };
+
+        if (!mergedMap[item.skill_id]) {
+          mergedMap[item.skill_id] = [];
+        }
+        // Avoid duplicate ids
+        const exists = mergedMap[item.skill_id].findIndex(r => r.id === item.id);
+        if (exists >= 0) {
+          mergedMap[item.skill_id][exists] = item;
+        } else {
+          mergedMap[item.skill_id].push(item);
+        }
+      });
+
+      saveStoredSkillResources(mergedMap);
+      return mergedMap;
+    }
+  } catch (err) {
+    // Return cached on network / table not ready
+  }
+
+  return localMap;
+}
+
+/**
+ * Add a new Skill Resource (Document or Reference)
+ */
+export async function addSkillResource(resData: Omit<SkillResource, 'id'>): Promise<SkillResource> {
+  const localMap = getStoredSkillResources();
+  const newId = `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  
+  const newItem: SkillResource = {
+    id: newId,
+    skill_id: resData.skill_id,
+    title: resData.title.trim(),
+    type: resData.type,
+    format: resData.format || 'link',
+    url: resData.url.trim(),
+    description: resData.description ? resData.description.trim() : undefined,
+    created_at: new Date().toISOString()
+  };
+
+  if (!localMap[newItem.skill_id]) {
+    localMap[newItem.skill_id] = [];
+  }
+  localMap[newItem.skill_id].push(newItem);
+  saveStoredSkillResources(localMap);
+
+  try {
+    const { data, error } = await supabase
+      .from('skill_resources')
+      .insert({
+        skill_id: newItem.skill_id,
+        title: newItem.title,
+        type: newItem.type,
+        format: newItem.format,
+        url: newItem.url,
+        description: newItem.description
+      })
+      .select('*')
+      .maybeSingle();
+
+    if (!error && data) {
+      newItem.id = data.id;
+      // update id in cache
+      const list = localMap[newItem.skill_id] || [];
+      const idx = list.findIndex(r => r.id === newId);
+      if (idx >= 0) {
+        list[idx] = { ...newItem, id: data.id };
+        saveStoredSkillResources(localMap);
+      }
+      return { ...newItem, id: data.id };
+    }
+  } catch (err) {
+    // Saved locally
+  }
+
+  return newItem;
+}
+
+/**
+ * Delete a Skill Resource
+ */
+export async function deleteSkillResource(id: string, skillId: string): Promise<boolean> {
+  const localMap = getStoredSkillResources();
+  if (localMap[skillId]) {
+    localMap[skillId] = localMap[skillId].filter(r => r.id !== id);
+    saveStoredSkillResources(localMap);
+  }
+
+  try {
+    await supabase
+      .from('skill_resources')
+      .delete()
+      .eq('id', id);
+  } catch (err) {}
+
+  return true;
+}
+
+/**
+ * Upload a PDF file to Supabase Storage or convert to object/data URL
+ */
+export async function uploadResourcePdf(file: File, skillId: string): Promise<{ url: string; fileName: string }> {
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const path = `${skillId}/${Date.now()}_${sanitizedName}`;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from('skill-materials')
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (!error && data) {
+      const { data: publicUrlData } = supabase.storage
+        .from('skill-materials')
+        .getPublicUrl(path);
+
+      if (publicUrlData?.publicUrl) {
+        return { url: publicUrlData.publicUrl, fileName: file.name };
+      }
+    }
+  } catch (e) {}
+
+  // Fallback: Read as base64 data URL for client persistence
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({ url: (reader.result as string) || URL.createObjectURL(file), fileName: file.name });
+    };
+    reader.onerror = () => {
+      resolve({ url: URL.createObjectURL(file), fileName: file.name });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * =========================================================================
+ * ROADMAP STEPS / CURRICULUM SYNC
+ * =========================================================================
+ */
+
+export async function fetchAllRoadmapSteps(): Promise<Record<string, RoadmapStep[]>> {
+  const localMap = getStoredRoadmapSteps();
+
+  try {
+    const { data, error } = await supabase
+      .from('roadmap_steps')
+      .select('*')
+      .order('step_order', { ascending: true });
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      const dbMap: Record<string, RoadmapStep[]> = { ...localMap };
+      data.forEach((row: any) => {
+        const item: RoadmapStep = {
+          id: row.id,
+          skill_id: row.skill_id,
+          title: row.title,
+          description: row.description || '',
+          step_order: Number(row.step_order) || 1,
+          resource_link: row.resource_link || undefined,
+          created_at: row.created_at
+        };
+        if (!dbMap[item.skill_id]) {
+          dbMap[item.skill_id] = [];
+        }
+        const exists = dbMap[item.skill_id].findIndex(s => s.id === item.id);
+        if (exists >= 0) {
+          dbMap[item.skill_id][exists] = item;
+        } else {
+          dbMap[item.skill_id].push(item);
+        }
+      });
+
+      // Sort each skill's steps by step_order
+      Object.keys(dbMap).forEach(k => {
+        dbMap[k].sort((a, b) => a.step_order - b.step_order);
+      });
+
+      saveStoredRoadmapSteps(dbMap);
+      return dbMap;
+    }
+  } catch (err) {}
+
+  return localMap;
+}
+
+export async function addRoadmapStepToDb(stepData: Omit<RoadmapStep, 'id'>): Promise<RoadmapStep> {
+  const localMap = getStoredRoadmapSteps();
+  const tempId = `step-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newStep: RoadmapStep = {
+    id: tempId,
+    skill_id: stepData.skill_id,
+    title: stepData.title.trim(),
+    description: stepData.description.trim(),
+    step_order: stepData.step_order || 1,
+    resource_link: stepData.resource_link ? stepData.resource_link.trim() : undefined,
+    created_at: new Date().toISOString()
+  };
+
+  if (!localMap[newStep.skill_id]) {
+    localMap[newStep.skill_id] = [];
+  }
+  localMap[newStep.skill_id].push(newStep);
+  localMap[newStep.skill_id].sort((a, b) => a.step_order - b.step_order);
+  saveStoredRoadmapSteps(localMap);
+
+  try {
+    const { data, error } = await supabase
+      .from('roadmap_steps')
+      .insert({
+        skill_id: newStep.skill_id,
+        title: newStep.title,
+        description: newStep.description,
+        step_order: newStep.step_order,
+        resource_link: newStep.resource_link
+      })
+      .select('*')
+      .maybeSingle();
+
+    if (!error && data) {
+      newStep.id = data.id;
+      const list = localMap[newStep.skill_id] || [];
+      const idx = list.findIndex(s => s.id === tempId);
+      if (idx >= 0) {
+        list[idx] = { ...newStep, id: data.id };
+        saveStoredRoadmapSteps(localMap);
+      }
+      return { ...newStep, id: data.id };
+    }
+  } catch (err) {}
+
+  return newStep;
+}
+
+export async function deleteRoadmapStepFromDb(skillId: string, stepId: string): Promise<boolean> {
+  const localMap = getStoredRoadmapSteps();
+  if (localMap[skillId]) {
+    localMap[skillId] = localMap[skillId].filter(s => s.id !== stepId);
+    saveStoredRoadmapSteps(localMap);
+  }
+
+  try {
+    await supabase
+      .from('roadmap_steps')
+      .delete()
+      .eq('id', stepId);
+  } catch (err) {}
+
+  return true;
 }
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Field, Skill, RoadmapStep } from '../types';
-import { X, Plus, Trash2, Edit2, Check, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Field, Skill, RoadmapStep, SkillResource } from '../types';
+import { X, Plus, Trash2, Edit2, Check, Save, FileText, Link, Youtube, Github, Globe, UploadCloud, Copy, Database, ExternalLink, BookOpen, FileCheck } from 'lucide-react';
+import { uploadResourcePdf } from '../lib/supabaseService';
 
 interface SkillModalProps {
   isOpen: boolean;
@@ -389,6 +390,498 @@ export const StepModal: React.FC<StepModalProps> = ({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+interface ResourceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (resourceData: Omit<SkillResource, 'id'>) => void;
+  skillId: string;
+  skillName: string;
+}
+
+export const ResourceModal: React.FC<ResourceModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  skillId,
+  skillName
+}) => {
+  const [type, setType] = useState<'document' | 'reference'>('document');
+  const [format, setFormat] = useState<'pdf' | 'drive' | 'link' | 'youtube' | 'github' | 'article'>('link');
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setType('document');
+      setFormat('link');
+      setTitle('');
+      setUrl('');
+      setDescription('');
+      setUploadedFileName(null);
+      setUploadingPdf(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      alert('Please upload a valid PDF document.');
+      return;
+    }
+
+    setUploadingPdf(true);
+    try {
+      const res = await uploadResourcePdf(file, skillId);
+      setUrl(res.url);
+      setUploadedFileName(res.fileName);
+      setFormat('pdf');
+      if (!title) {
+        // Auto-suggest nice title from filename
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        setTitle(`${cleanName} (PDF)`);
+      }
+    } catch (err: any) {
+      alert('Failed to process PDF: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !url.trim()) return;
+
+    onSave({
+      skill_id: skillId,
+      title: title.trim(),
+      type,
+      format,
+      url: url.trim(),
+      description: description.trim() || undefined
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl p-5 sm:p-7 max-w-lg w-full max-h-[92vh] overflow-y-auto shadow-2xl relative border border-slate-200">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 text-[#8a8ca3] hover:text-[#1a1c2e] p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="w-8 h-8 rounded-xl bg-[#6c5ce7]/10 text-[#6c5ce7] flex items-center justify-center font-bold">
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-[#1a1c2e]">
+              Add Resource &amp; Material
+            </h3>
+            <p className="text-xs text-[#8a8ca3]">For {skillName} roadmap</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-5">
+          {/* Category Tabs: Document vs Reference */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">Resource Category</label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setType('document');
+                  if (format === 'youtube' || format === 'github' || format === 'article') {
+                    setFormat('link');
+                  }
+                }}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  type === 'document' 
+                    ? 'bg-white text-[#6c5ce7] shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Document / PDF / Drive</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setType('reference');
+                  if (format === 'pdf' || format === 'drive') {
+                    setFormat('youtube');
+                  }
+                }}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  type === 'reference' 
+                    ? 'bg-white text-[#6c5ce7] shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Youtube className="w-3.5 h-3.5 text-rose-500" />
+                <span>Reference / Tutorial</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Format Selector */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">Format Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {type === 'document' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('link')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'link' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" /> Web Docs / Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('pdf')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'pdf' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-red-400" /> Direct PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('drive')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'drive' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Link className="w-3.5 h-3.5 text-amber-500" /> Google Drive Link
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('youtube')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'youtube' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Youtube className="w-3.5 h-3.5 text-red-500" /> YouTube Video/Playlist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('article')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'article' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-500" /> Article / Blog
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('github')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'github' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Github className="w-3.5 h-3.5 text-slate-800" /> GitHub Repository
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat('link')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all flex items-center gap-1.5 ${
+                      format === 'link' ? 'bg-[#6c5ce7] text-white border-[#6c5ce7]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5 text-sky-500" /> External Tool / Site
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Optional Direct PDF Upload Box when format === 'pdf' */}
+          {format === 'pdf' && (
+            <div className="p-3.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="application/pdf,.pdf" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+              />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {uploadedFileName || 'Upload PDF Document directly'}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {uploadingPdf ? 'Uploading file...' : uploadedFileName ? 'PDF linked successfully' : 'Supports books, lecture slides & cheat sheets'}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPdf}
+                  className="px-3 py-1.5 bg-white border border-slate-300 hover:border-[#6c5ce7] text-[#6c5ce7] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  {uploadingPdf ? 'Processing...' : uploadedFileName ? 'Change PDF' : 'Select PDF File'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Resource Title */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Resource Title <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              className="field-input" 
+              placeholder={
+                format === 'youtube' ? 'e.g. Traversy Media — Complete Crash Course' :
+                format === 'drive' ? 'e.g. Official Lecture Notes & Cheatsheets (Drive)' :
+                format === 'pdf' ? 'e.g. Master Guide to Clean Code (PDF)' :
+                'e.g. MDN Web Docs — Official Reference'
+              }
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Resource URL */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              URL / Link <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="url" 
+              className="field-input" 
+              placeholder={
+                format === 'youtube' ? 'https://www.youtube.com/watch?v=...' :
+                format === 'drive' ? 'https://drive.google.com/drive/folders/...' :
+                'https://...'
+              }
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Short Note or Description (Optional)
+            </label>
+            <textarea 
+              className="field-input min-h-[60px]" 
+              placeholder="What will learners gain from this material?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="btn-row pt-2">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="btn-ghost"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={uploadingPdf}
+              className="btn-primary flex1 flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              Save Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+interface SqlCodeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const SqlCodeModal: React.FC<SqlCodeModalProps> = ({ isOpen, onClose }) => {
+  const [copied, setCopied] = useState(false);
+
+  if (!isOpen) return null;
+
+  const sqlCode = `-- =========================================================================
+-- SkillTrack DIU — Supabase Database Tables for Roadmap & Resources
+-- Run this in your Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
+-- =========================================================================
+
+-- 1. Table for Roadmap Curriculum Steps
+CREATE TABLE IF NOT EXISTS public.roadmap_steps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    skill_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    step_order INT DEFAULT 1,
+    resource_link TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Index for instant skill roadmap lookups
+CREATE INDEX IF NOT EXISTS idx_roadmap_steps_skill_id ON public.roadmap_steps (skill_id);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.roadmap_steps ENABLE ROW LEVEL SECURITY;
+
+-- Allow everyone to read roadmap steps
+CREATE POLICY "Public Read Roadmap Steps"
+ON public.roadmap_steps FOR SELECT
+USING (true);
+
+-- Allow authenticated users / admins to manage steps
+CREATE POLICY "Admin All Roadmap Steps"
+ON public.roadmap_steps FOR ALL
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');
+
+
+-- 2. Table for Official Documentation & Learning References
+-- (Supports Direct PDFs, Google Drive Folders, Web Docs, YouTube, GitHub, Articles)
+CREATE TABLE IF NOT EXISTS public.skill_resources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    skill_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('document', 'reference')),
+    format TEXT NOT NULL DEFAULT 'link' CHECK (format IN ('pdf', 'drive', 'link', 'youtube', 'github', 'article')),
+    url TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Index for skill resources lookups
+CREATE INDEX IF NOT EXISTS idx_skill_resources_skill_id ON public.skill_resources (skill_id);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.skill_resources ENABLE ROW LEVEL SECURITY;
+
+-- Allow everyone to read resources
+CREATE POLICY "Public Read Skill Resources"
+ON public.skill_resources FOR SELECT
+USING (true);
+
+-- Allow authenticated users / admins to insert, update, delete
+CREATE POLICY "Admin All Skill Resources"
+ON public.skill_resources FOR ALL
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');
+
+
+-- 3. Storage Bucket Setup for PDF direct uploads:
+-- Go to Supabase Dashboard -> Storage -> Create new bucket:
+-- Bucket Name: "skill-materials"
+-- Public Bucket: ON (Checked)
+`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sqlCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl p-5 sm:p-7 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative border border-slate-200">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 text-[#8a8ca3] hover:text-[#1a1c2e] p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-[#1a1c2e]">
+              Supabase SQL Schema Script
+            </h3>
+            <p className="text-xs text-[#8a8ca3]">
+              Copy &amp; run this SQL in your Supabase SQL Editor to support persistent Roadmaps &amp; Resources.
+            </p>
+          </div>
+        </div>
+
+        <div className="my-4 relative">
+          <div className="absolute top-3 right-3 z-10">
+            <button
+              onClick={handleCopy}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer ${
+                copied ? 'bg-emerald-600 text-white' : 'bg-[#6c5ce7] hover:bg-[#5848c2] text-white'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Copied to Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy SQL Code</span>
+                </>
+              )}
+            </button>
+          </div>
+          <pre className="bg-[#1a1c2e] text-slate-100 font-mono text-xs p-4 rounded-xl overflow-x-auto max-h-[380px] leading-relaxed select-all">
+            {sqlCode}
+          </pre>
+        </div>
+
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+          <span className="font-bold text-amber-700 mt-0.5">ℹ️ Storage Note:</span>
+          <div>
+            For direct PDF uploads to work smoothly with Supabase Storage, make sure to create a Public bucket named <b>"skill-materials"</b> in your Supabase project under <b>Storage &gt; New Bucket</b>.
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1a1c2e] font-bold text-xs rounded-xl transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
