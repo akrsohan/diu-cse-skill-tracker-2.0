@@ -34,6 +34,7 @@ import { UserFeedbackHistoryModal } from './components/UserFeedbackHistoryModal'
 import { AdminFeedbackSection } from './components/AdminFeedbackSection';
 import { SkillResourcesSection } from './components/SkillResourcesSection';
 import { AdminRoadmapSection } from './components/AdminRoadmapSection';
+import { HeroProgressCore3D } from './components/HeroProgressCore3D';
 import { 
   getProfile,
   updateProfile,
@@ -145,6 +146,28 @@ export default function App() {
   const [discoverView, setDiscoverView] = useState<'main' | 'fields' | 'field-skills' | 'all-skills'>('main');
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  
+  // Theme State (Dark Mode / Light Mode with localStorage persistence)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('skilltrack_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark-mode');
+    }
+    localStorage.setItem('skilltrack_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
   
   // Auth Form State (Clean by default)
   const [authEmail, setAuthEmail] = useState('');
@@ -854,15 +877,22 @@ export default function App() {
   const handleSaveProfileSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSetupError(null);
-    setSetupLoading(true);
 
-    const hasAtLeastOneSocial = setupFb.trim() || setupTelegram.trim() || setupWhatsapp.trim();
+    const hasAtLeastOneSocial = Boolean(setupFb.trim() || setupTelegram.trim() || setupWhatsapp.trim());
+    const isMandatoryComplete = 
+      Boolean(setupFullName.trim()) && 
+      Boolean(setupDepartment.trim()) && 
+      Boolean(setupBatch.trim()) && 
+      Boolean(setupRoll.trim()) && 
+      hasAtLeastOneSocial;
 
-    if (!hasAtLeastOneSocial) {
-      setSetupError('At least one contact link (Facebook, Telegram, or WhatsApp) is required to complete profile setup!');
+    if (!isMandatoryComplete) {
+      setSetupError('সব ইনফো দেওয়া হয়নি। (All required mandatory information has not been provided)');
       setSetupLoading(false);
       return;
     }
+
+    setSetupLoading(true);
 
     if (!currentUser || !currentUser.id) {
       setSetupError('Session expired. Please log in again.');
@@ -1377,6 +1407,8 @@ export default function App() {
           }}
           onOpenSendFeedback={() => setIsFeedbackModalOpen(true)}
           onOpenMyFeedback={() => setIsMyFeedbackModalOpen(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       )}
 
@@ -1796,6 +1828,11 @@ export default function App() {
                 <h1>Level up your skills, {getMainName(currentUser.full_name)}.</h1>
                 <p>Pick a roadmap, challenge your limits, beat the deadline and earn points to rank #1 in your batch.</p>
               </div>
+              <HeroProgressCore3D 
+                points={currentUser.points}
+                streak={currentUser.current_streak}
+                batchRank={userBatchRank}
+              />
               <div className="hero-stats">
                 <div className="stat">
                   <b>{currentUser.points}</b>
@@ -2026,10 +2063,10 @@ export default function App() {
                         setSelectedFieldId(f.id);
                         setDiscoverView('field-skills');
                       }}
-                      className="p-5 rounded-2xl bg-white border border-[#e4e5ee] hover:border-[#6c5ce7] transition-all cursor-pointer shadow-xs hover:shadow-md flex items-center justify-between"
+                      className="domain-card-item p-5 rounded-2xl bg-white border border-[#e4e5ee] hover:border-[#6c5ce7] transition-all cursor-pointer shadow-xs hover:shadow-md flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3.5">
-                        <span className="text-2xl">{f.icon}</span>
+                        <span className="domain-card-icon text-2xl">{f.icon}</span>
                         <div>
                           <div className="font-bold text-sm text-[#1a1c2e]">{f.name}</div>
                           <div className="text-xs text-[#8a8ca3]">{skills.filter(s => s.field_id === f.id).length} Roadmaps</div>
@@ -2178,12 +2215,13 @@ export default function App() {
             <div className="flex items-center justify-between mb-5">
               <button 
                 onClick={() => setCurrentPage('discover')}
-                className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-colors bg-white px-4 py-2.5 rounded-xl border border-[#e4e5ee] hover:border-[#6c5ce7] shadow-2xs"
+                className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold flex items-center gap-1.5 transition-all bg-white px-4 py-2.5 rounded-xl border border-[#e4e5ee] hover:border-[#6c5ce7] shadow-2xs hover:shadow-xs hover:-translate-x-0.5 group cursor-pointer"
                 id="btn-back-to-discover"
               >
-                ← Back to Discover &amp; Roadmaps
+                <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+                <span>Back to Discover &amp; Roadmaps</span>
               </button>
-              <div className="text-xs text-[#8a8ca3] font-medium hidden sm:block">
+              <div className="roadmap-track-badge text-xs text-[#8a8ca3] font-medium hidden sm:block">
                 Skill Track: <span className="font-bold text-[#1a1c2e]">{currentSkill.name}</span> ({currentSkillSteps.length} milestones)
               </div>
             </div>
@@ -2191,10 +2229,10 @@ export default function App() {
             <div className="w-full max-w-4xl mx-auto">
               
               {/* Header info */}
-              <div className="bg-white rounded-md p-6 sm:p-7 border border-[#e4e5ee] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xs">
+              <div className="roadmap-header-card p-6 sm:p-7 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                 <div className="flex items-center gap-4">
                   <div 
-                    className="w-14 h-14 min-w-14 rounded-md text-white font-extrabold flex items-center justify-center text-xl shadow-xs"
+                    className="skill-3d-badge w-14 h-14 min-w-14 rounded-2xl text-white font-extrabold flex items-center justify-center text-2xl"
                     style={{ background: currentSkill.bg_color || '#6c5ce7' }}
                   >
                     {currentSkill.icon}
@@ -2202,7 +2240,7 @@ export default function App() {
                   <div>
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold text-2xl text-[#1a1c2e] leading-tight">{currentSkill.name}</h3>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-sm bg-[#f1eefe] text-[#6c5ce7]">
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7] border border-[#6c5ce7]/20 shadow-2xs">
                         {currentSkill.difficulty || 'Beginner'}
                       </span>
                     </div>
@@ -2241,11 +2279,11 @@ export default function App() {
               </div>
 
               {currentSkillSteps.length === 0 ? (
-                <div className="bg-white rounded-md p-8 text-center text-[#8a8ca3] text-xs border border-[#e4e5ee]">
+                <div className="bg-white rounded-2xl p-8 text-center text-[#8a8ca3] text-xs border border-[#e4e5ee] shadow-2xs">
                   No roadmap steps listed yet for this skill track.
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="roadmap-journey-track space-y-3">
                   {currentSkillSteps.map((st, idx) => (
                     <div key={st.id} className="step-card" id={`step-card-${st.id}`}>
                       <div className="step-num">{idx + 1}</div>
@@ -2280,25 +2318,52 @@ export default function App() {
         <div className="page" id="page-dashboard">
           <div className="page-tag">PAGE 6 — DASHBOARD / ACTIVE CHALLENGE</div>
 
-          <div className="content">
+          <div className="content w-full max-w-5xl mx-auto">
             
             {/* Real Stats Mini Grid */}
             <div className="stat-mini-grid mb-6">
-              <div className="stat-mini">
+              <div className="stat-mini stat-mini-points">
+                <div className="stat-mini-top">
+                  <div className="stat-mini-icon-3d stat-icon-points">
+                    <Zap className="w-4 h-4 text-purple-600 fill-purple-500/20" />
+                  </div>
+                  <div className="stat-mini-tag">XP</div>
+                </div>
                 <div className="val">{currentUser.points}</div>
                 <div className="lbl">total points</div>
               </div>
-              <div className="stat-mini">
+
+              <div className="stat-mini stat-mini-streak">
+                <div className="stat-mini-top">
+                  <div className="stat-mini-icon-3d stat-icon-streak">
+                    <Flame className="w-4 h-4 text-amber-500 fill-amber-500/30" />
+                  </div>
+                  <div className="stat-mini-tag stat-tag-streak">STREAK</div>
+                </div>
                 <div className="val">{currentUser.current_streak} days</div>
                 <div className="lbl">current streak</div>
               </div>
-              <div className="stat-mini">
+
+              <div className="stat-mini stat-mini-skills">
+                <div className="stat-mini-top">
+                  <div className="stat-mini-icon-3d stat-icon-skills">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="stat-mini-tag stat-tag-skills">NODES</div>
+                </div>
                 <div className="val">
                   {allCompletedProgress.filter(cp => cp.user_id === currentUser.id).length}
                 </div>
                 <div className="lbl">skills completed</div>
               </div>
-              <div className="stat-mini">
+
+              <div className="stat-mini stat-mini-rank">
+                <div className="stat-mini-top">
+                  <div className="stat-mini-icon-3d stat-icon-rank">
+                    <Trophy className="w-4 h-4 text-amber-600 fill-amber-500/20" />
+                  </div>
+                  <div className="stat-mini-tag stat-tag-rank">CAMPUS</div>
+                </div>
                 <div className="val">{userBatchRank}</div>
                 <div className="lbl">batch rank</div>
               </div>
@@ -2311,29 +2376,31 @@ export default function App() {
                   
                   {/* Header info */}
                 <div className="active-card-top pb-4 border-b border-[#f0f1f7]">
-                  <div className="active-card-title">
+                  <div className="active-card-title min-w-0 flex-1">
                     <span 
-                      className="w-12 h-12 rounded-md text-white font-extrabold flex items-center justify-center text-lg shadow-xs"
+                      className="skill-3d-badge w-12 h-12 min-w-12 rounded-xl text-white font-extrabold flex items-center justify-center text-xl"
                       style={{ background: skills.find(s => s.id === activeProgress.skill_id)?.bg_color || '#6c5ce7' }}
                     >
                       {skills.find(s => s.id === activeProgress.skill_id)?.icon || '⚡'}
                     </span>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4>{skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#f1eefe] text-[#6c5ce7]">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h4 className="font-extrabold text-lg text-[#1a1c2e] leading-tight truncate">
+                          {skills.find(s => s.id === activeProgress.skill_id)?.name || 'Active Skill'}
+                        </h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7] border border-[#6c5ce7]/20 shadow-2xs">
                           Active Challenge
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#e6faf5] text-[#00b894]">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#e6faf5] text-[#00b894] border border-[#00b894]/20 shadow-2xs">
                           {skills.find(s => s.id === activeProgress.skill_id)?.difficulty || 'Sprint'}
                         </span>
                       </div>
-                      <p className="text-xs text-[#8a8ca3] mt-1 whitespace-normal break-words leading-relaxed">
+                      <p className="text-xs text-[#8a8ca3] whitespace-normal break-words leading-relaxed">
                         {skills.find(s => s.id === activeProgress.skill_id)?.description || 'Finish all checkpoints before the deadline to earn points & streak!'}
                       </p>
                     </div>
                   </div>
-                  <div className="active-badge">
+                  <div className="active-badge self-start sm:self-auto shrink-0">
                     <span className="w-2 h-2 rounded-full bg-[#00b894] animate-pulse"></span>
                     <span>LIVE CHALLENGE</span>
                   </div>
@@ -2341,9 +2408,11 @@ export default function App() {
 
                 {/* Real Live Countdown Timer */}
                 <div className="my-6">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2.5">
                     <span className="text-xs font-bold text-[#8a8ca3] uppercase tracking-wider">Time Remaining:</span>
-                    <span className="text-xs font-bold text-[#6c5ce7]">{timeRemaining.percent}% time left</span>
+                    <span className="text-xs font-extrabold text-[#6c5ce7] bg-[#f1eefe] px-2.5 py-0.5 rounded-full border border-[#6c5ce7]/20">
+                      {timeRemaining.percent}% time left
+                    </span>
                   </div>
                   
                   <div className="countdown-grid">
@@ -2366,9 +2435,9 @@ export default function App() {
                   </div>
 
                   {/* Progress bar */}
-                  <div className="w-full bg-[#f0f1f7] h-2.5 rounded-sm overflow-hidden border border-[#e4e5ee] mt-3">
+                  <div className="w-full bg-[#f0f1f7] h-3 rounded-full overflow-hidden border border-[#e4e5ee] mt-3.5 p-0.5 shadow-inner">
                     <div 
-                      className="bg-linear-to-r from-[#6c5ce7] to-[#a29bfe] h-full rounded-sm transition-all duration-1000"
+                      className="bg-linear-to-r from-[#6c5ce7] via-[#8477f3] to-[#a29bfe] h-full rounded-full transition-all duration-1000 shadow-xs"
                       style={{ width: `${timeRemaining.percent}%` }}
                     />
                   </div>
@@ -2386,7 +2455,7 @@ export default function App() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-2.5 py-1 bg-[#f7f8fc] border border-[#e4e5ee] rounded-sm text-[#1a1c2e]">
+                      <span className="text-xs font-bold px-2.5 py-1 bg-[#f7f8fc] border border-[#e4e5ee] rounded-md text-[#1a1c2e] shadow-2xs">
                         {(activeProgress.steps_completed || []).length} / {(roadmapSteps[activeProgress.skill_id] || []).length} Steps Completed
                       </span>
                     </div>
@@ -2399,9 +2468,9 @@ export default function App() {
                         <div 
                           key={step.id}
                           onClick={() => handleToggleStep(step.step_order)}
-                          className={`p-4 rounded-md border flex items-start gap-3.5 cursor-pointer transition-all ${isChecked ? 'bg-[#00b894]/8 border-[#00b894]/40 shadow-xs' : 'bg-white border-[#e4e5ee] hover:border-[#6c5ce7] hover:bg-[#fafbff]'}`}
+                          className={`milestone-check-card p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all ${isChecked ? 'milestone-checked bg-[#00b894]/8 border-[#00b894]/40 shadow-xs' : 'bg-white border-[#e4e5ee] hover:border-[#6c5ce7] hover:bg-[#fafbff]'}`}
                         >
-                          <div className={`w-5 h-5 min-w-5 rounded-sm mt-0.5 flex items-center justify-center text-xs font-extrabold transition-all ${isChecked ? 'bg-[#00b894] text-white shadow-xs' : 'border-2 border-[#c8cad6] text-transparent'}`}>
+                          <div className={`milestone-checkbox w-5 h-5 min-w-5 rounded-md mt-0.5 flex items-center justify-center text-xs font-extrabold transition-all ${isChecked ? 'bg-[#00b894] text-white shadow-2xs' : 'border-2 border-[#c8cad6] text-transparent'}`}>
                             ✓
                           </div>
                           <div className="min-w-0 flex-1">
@@ -2410,7 +2479,7 @@ export default function App() {
                                 Step {idx + 1}: {step.title}
                               </div>
                               {isChecked && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-[#00b894]/15 text-[#00b894]">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#00b894]/15 text-[#00b894] border border-[#00b894]/30 shadow-2xs">
                                   Completed
                                 </span>
                               )}
@@ -2433,7 +2502,7 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-2.5">
                     <button 
                       onClick={handleCompleteActiveChallenge}
-                      className="px-5 py-3 bg-[#00b894] hover:bg-[#00a383] text-white text-xs font-bold rounded-md transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                      className="btn-complete-3d px-5 py-3 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer select-none"
                       id="btn-complete-challenge"
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -2442,7 +2511,7 @@ export default function App() {
 
                     <button 
                       onClick={() => setIsAddTimeModalOpen(true)}
-                      className="px-4 py-3 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="btn-secondary-3d px-4 py-3 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none"
                       id="btn-add-extra-time"
                     >
                       <Clock className="w-4 h-4 text-[#6c5ce7]" />
@@ -2452,7 +2521,7 @@ export default function App() {
 
                   <button 
                     onClick={() => setIsCancelModalOpen(true)}
-                    className="px-4 py-2.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 text-xs font-bold rounded-md transition-colors text-center sm:text-right cursor-pointer"
+                    className="btn-cancel-3d px-4 py-2.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 text-xs font-bold rounded-xl transition-all text-center sm:text-right cursor-pointer select-none"
                     id="btn-cancel-challenge"
                   >
                     Cancel Challenge
@@ -2480,19 +2549,20 @@ export default function App() {
               })()}
               </>
             ) : (
-              <div className="bg-white border border-[#e4e5ee] rounded-md p-8 mb-8 text-center shadow-xs">
-                <div className="w-12 h-12 rounded-md bg-[#6c5ce7]/10 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
-                  <Flame className="w-6 h-6" />
+              <div className="empty-state-3d bg-white border border-[#e4e5ee] rounded-2xl p-8 mb-8 text-center shadow-xs">
+                <div className="empty-icon-3d w-14 h-14 rounded-2xl bg-linear-to-br from-[#6c5ce7]/15 to-[#a29bfe]/20 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3.5 border border-[#6c5ce7]/20 shadow-2xs">
+                  <Flame className="w-7 h-7 text-[#6c5ce7]" />
                 </div>
-                <h4 className="font-bold text-base text-[#1a1c2e] mb-1">No Active Timed Challenge</h4>
-                <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mb-4 whitespace-normal">
-                  Select a skill track from the discover roadmaps and set your custom sprint deadline to earn +10 points.
+                <h4 className="font-extrabold text-lg text-[#1a1c2e] mb-1.5">No Active Timed Challenge</h4>
+                <p className="text-xs text-[#8a8ca3] max-w-sm mx-auto mb-5 whitespace-normal leading-relaxed">
+                  Select a skill track from the discover roadmaps and set your custom sprint deadline to earn +10 points and build your streak.
                 </p>
                 <button 
                   onClick={() => setCurrentPage('discover')}
-                  className="px-5 py-2.5 bg-[#6c5ce7] text-white text-xs font-bold rounded-md hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
+                  className="btn-challenge-cta inline-flex items-center gap-2 px-6 py-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer"
                 >
-                  Pick a Skill to Learn →
+                  <span>Pick a Skill to Learn</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             )}
@@ -2510,7 +2580,7 @@ export default function App() {
                     return (
                       <div 
                         key={badge.id}
-                        className={`badge-item ${isUnlocked ? '' : 'badge-locked'}`}
+                        className={`badge-item ${isUnlocked ? 'badge-unlocked' : 'badge-locked'}`}
                       >
                         <div 
                           className="badge-circle" 
@@ -2519,7 +2589,14 @@ export default function App() {
                           {isUnlocked ? (badge.icon_symbol || '★') : '🔒'}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h5>{badge.name}</h5>
+                          <h5 className="flex items-center gap-1.5">
+                            <span>{badge.name}</span>
+                            {isUnlocked && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm bg-emerald-50 text-emerald-600 border border-emerald-200 uppercase">
+                                Unlocked
+                              </span>
+                            )}
+                          </h5>
                           <p className="whitespace-normal break-words">{badge.description}</p>
                         </div>
                       </div>
@@ -2538,19 +2615,19 @@ export default function App() {
                       const sk = skills.find(s => s.id === cs.skill_id) || { name: 'Skill', icon: 'S', bg_color: '#6c5ce7' };
                       return (
                         <div key={cs.id} className="completed-skill-card">
-                          <div className="icon" style={{ background: sk.bg_color || '#e84393' }}>
+                          <div className="icon skill-3d-badge" style={{ background: sk.bg_color || '#e84393' }}>
                             {sk.icon || 'S'}
                           </div>
                           <div className="info min-w-0 flex-1">
                             <h5>{sk.name}</h5>
                             <p className="whitespace-normal break-words">Finished on time (+10 pts)</p>
                           </div>
-                          <div className="time-badge rounded-sm">Completed</div>
+                          <div className="time-badge rounded-md shadow-2xs font-extrabold">Completed</div>
                         </div>
                       );
                     })
                 ) : (
-                  <div className="bg-white border border-[#e4e5ee] rounded-md p-6 text-center text-xs text-[#8a8ca3]">
+                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center text-xs text-[#8a8ca3] shadow-2xs">
                     No completed challenges yet. Finish your active sprint to earn your first completion badge!
                   </div>
                 )}
@@ -2578,31 +2655,31 @@ export default function App() {
           <div className="page" id="page-leaderboard">
             <div className="page-tag">PAGE 7 — LEADERBOARD</div>
 
-            <div className="content">
+            <div className="content w-full max-w-5xl mx-auto">
               
               {/* Leaderboard Header Banner */}
-              <div className="bg-white border border-[#e4e5ee] rounded-2xl p-5 sm:p-6 mb-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="lb-header-banner bg-white border border-[#e4e5ee] rounded-2xl p-5 sm:p-6 mb-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2.5 mb-1">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
-                      <Trophy className="w-4 h-4 text-amber-500" />
+                    <div className="lb-trophy-icon-3d w-9 h-9 rounded-xl bg-linear-to-br from-amber-400/20 to-amber-500/10 text-amber-500 flex items-center justify-center font-bold border border-amber-400/30 shadow-2xs">
+                      <Trophy className="w-5 h-5 text-amber-500 fill-amber-500/20" />
                     </div>
                     <h2 className="text-xl sm:text-2xl font-black text-[#1a1c2e] tracking-tight">
                       Campus Leaderboard
                     </h2>
                   </div>
-                  <p className="text-xs text-[#8a8ca3] max-w-md">
+                  <p className="text-xs text-[#8a8ca3] max-w-md leading-relaxed">
                     Live peer rankings based on completed skill challenges and streak consistency.
                   </p>
                 </div>
 
                 {/* User's quick rank status */}
-                <div className="flex items-center gap-2.5 bg-[#f8fafc] border border-[#e2e8f0] px-4 py-2.5 rounded-xl self-stretch sm:self-auto justify-between sm:justify-start">
+                <div className="lb-user-status-card flex items-center gap-2.5 bg-[#f8fafc] border border-[#e2e8f0] px-4 py-2.5 rounded-xl self-stretch sm:self-auto justify-between sm:justify-start shadow-2xs">
                   <div className="text-left">
                     <div className="text-[10px] uppercase font-bold text-[#8a8ca3] tracking-wider">Your Position</div>
                     <div className="text-sm font-black text-[#1a1c2e] flex items-center gap-1.5">
                       {userRank > 0 ? (
-                        <span className="text-[#6c5ce7]">#{userRank} on Board</span>
+                        <span className="text-[#6c5ce7] font-extrabold">#{userRank} on Board</span>
                       ) : (
                         <span className="text-[#8a8ca3]">Unranked</span>
                       )}
@@ -2612,7 +2689,7 @@ export default function App() {
                   <div className="text-right sm:text-left">
                     <div className="text-[10px] uppercase font-bold text-[#8a8ca3] tracking-wider">Total Score</div>
                     <div className="text-sm font-black text-[#6c5ce7] flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-[#6c5ce7]" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#6c5ce7] fill-[#6c5ce7]/20" />
                       {currentUser.points} pts
                     </div>
                   </div>
@@ -2656,6 +2733,7 @@ export default function App() {
                       id="podium-rank-2"
                     >
                       <div className="podium-avatar-wrap">
+                        <div className="podium-medal-icon medal-silver">🥈</div>
                         <div className="avatar-big">
                           {top2.avatar_url ? (
                             <img src={top2.avatar_url} alt={top2.full_name} className="w-full h-full object-cover" />
@@ -2666,7 +2744,7 @@ export default function App() {
                       </div>
                       
                       <div className="podium-block">
-                        <span className="text-[10px] tracking-wider uppercase opacity-75">SILVER</span>
+                        <span className="podium-tier-label">SILVER</span>
                         <div className="podium-rank-num">2</div>
                       </div>
 
@@ -2701,7 +2779,7 @@ export default function App() {
                       </div>
                       
                       <div className="podium-block">
-                        <span className="text-[10px] tracking-wider uppercase opacity-80">CHAMPION</span>
+                        <span className="podium-tier-label">CHAMPION</span>
                         <div className="podium-rank-num">1</div>
                       </div>
 
@@ -2725,6 +2803,7 @@ export default function App() {
                       id="podium-rank-3"
                     >
                       <div className="podium-avatar-wrap">
+                        <div className="podium-medal-icon medal-bronze">🥉</div>
                         <div className="avatar-big">
                           {top3.avatar_url ? (
                             <img src={top3.avatar_url} alt={top3.full_name} className="w-full h-full object-cover" />
@@ -2735,7 +2814,7 @@ export default function App() {
                       </div>
                       
                       <div className="podium-block">
-                        <span className="text-[10px] tracking-wider uppercase opacity-75">BRONZE</span>
+                        <span className="podium-tier-label">BRONZE</span>
                         <div className="podium-rank-num">3</div>
                       </div>
 
@@ -2863,145 +2942,362 @@ export default function App() {
       {/* ========================================================================= */}
       {/* PAGE 8 — PUBLIC PROFILE */}
       {/* ========================================================================= */}
-      {currentPage === 'profile' && (
-        <div className="page" id="page-profile">
-          <div className="page-tag">PAGE 8 — PUBLIC PROFILE</div>
+      {currentPage === 'profile' && (() => {
+        const isOwn = targetProfile.id === currentUser?.id;
+        const targetCompletedSkills = selectedUserCompletedProgress;
 
-          <div className="content">
-            
-            <button 
-              onClick={() => setCurrentPage('leaderboard')}
-              className="text-xs text-[#8a8ca3] hover:text-[#1a1c2e] font-bold mb-4 flex items-center gap-1 transition-colors"
-            >
-              ← Back to Leaderboard
-            </button>
+        return (
+          <div className="page" id="page-profile">
+            <div className="page-tag">PAGE 8 — PUBLIC PROFILE</div>
 
-            {/* Profile Hero */}
-            <div className="profile-hero shadow-lg">
-              <div className="profile-avatar-big">
-                {targetProfile.avatar_url ? (
-                  <img src={targetProfile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  targetProfile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
-                )}
-              </div>
-              <div className="profile-hero-info">
-                <h2>{targetProfile.full_name}</h2>
-                <p>{targetProfile.department} · {targetProfile.batch_number} · Roll {targetProfile.roll_number}</p>
-              </div>
-              <div className="profile-hero-stats">
-                <div className="stat">
-                  <b>{targetProfile.points}</b>
-                  <span>points</span>
-                </div>
-                <div className="stat">
-                  <b>{targetProfile.current_streak}</b>
-                  <span>day streak</span>
-                </div>
-                <div className="stat">
-                  <b>{targetBatchRank}</b>
-                  <span>in batch</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Profile Grid */}
-            <div className="profile-grid">
+            <div className="content w-full max-w-5xl mx-auto">
               
-              {/* Left: Details */}
-              <div>
-                <div className="info-card">
-                  <div className="section-title" style={{ marginBottom: '14px' }}>Details</div>
-                  <div className="info-row">
-                    <span>Department</span>
-                    <span>{targetProfile.department || 'CSE'}</span>
+              {/* Back Navigation Bar */}
+              <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+                <button 
+                  onClick={() => setCurrentPage('leaderboard')}
+                  className="btn-secondary-3d px-3.5 py-2 bg-white border border-[#e4e5ee] text-[#1a1c2e] hover:bg-[#f4f5f8] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs select-none"
+                  id="btn-back-to-leaderboard"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Leaderboard</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {isOwn && (
+                    <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-[#6c5ce7]/10 text-[#6c5ce7] border border-[#6c5ce7]/20 shadow-2xs">
+                      ✨ Your Public Profile
+                    </span>
+                  )}
+                  {targetProfile.is_admin && (
+                    <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shadow-2xs flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-amber-600" /> Admin
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Profile Hero Card 2.5D */}
+              <div className="profile-hero shadow-lg relative overflow-hidden" id="profile-hero-card">
+                {/* 3D Elevated Avatar Frame */}
+                <div className="profile-avatar-3d-wrap">
+                  <div className="profile-avatar-big" id="profile-hero-avatar">
+                    {targetProfile.avatar_url ? (
+                      <img src={targetProfile.avatar_url} alt={targetProfile.full_name} className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      targetProfile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                    )}
                   </div>
-                  <div className="info-row">
-                    <span>Batch</span>
-                    <span>{targetProfile.batch_number || 'General'}</span>
+                  {isOwn && (
+                    <button
+                      onClick={() => setCurrentPage('profile-setup')}
+                      className="profile-avatar-edit-badge"
+                      title="Change avatar & details"
+                    >
+                      <Camera className="w-3 h-3 text-white" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Profile Hero Info */}
+                <div className="profile-hero-info flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
+                    <h2 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">
+                      {targetProfile.full_name}
+                    </h2>
+                    {isOwn && (
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-xs border border-white/30">
+                        YOU
+                      </span>
+                    )}
                   </div>
-                  <div className="info-row">
-                    <span>Roll / ID</span>
-                    <span>{targetProfile.roll_number || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span>Skills completed</span>
-                    <span>{selectedUserCompletedProgress.length}</span>
+                  
+                  <div className="profile-hero-subline flex items-center gap-2 mt-1.5 justify-center sm:justify-start flex-wrap text-white/90 text-xs sm:text-sm">
+                    <span className="font-semibold">{targetProfile.department || 'DIU Student'}</span>
+                    <span>·</span>
+                    <span>{targetProfile.batch_number || 'General Batch'}</span>
+                    {targetProfile.roll_number && (
+                      <>
+                        <span>·</span>
+                        <span className="font-mono text-white/80">ID: {targetProfile.roll_number}</span>
+                      </>
+                    )}
                   </div>
 
-                  <div className="social-links-row">
-                    {targetProfile.fb_link && (
-                      <a 
-                        href={formatSocialLink('facebook', targetProfile.fb_link)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="social-icon hover:scale-105 transition-transform" 
-                        style={{ background: '#3b5998' }}
-                        title="Facebook Profile"
+                  {/* Action row on desktop hero */}
+                  <div className="flex items-center gap-2 mt-3.5 justify-center sm:justify-start flex-wrap">
+                    {isOwn ? (
+                      <button
+                        onClick={() => setCurrentPage('profile-setup')}
+                        className="profile-hero-btn-edit flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-[#6c5ce7] font-bold text-xs shadow-xs hover:bg-white/90 transition-all cursor-pointer select-none"
+                        id="btn-hero-edit-profile"
                       >
-                        f
-                      </a>
+                        <User className="w-3.5 h-3.5" />
+                        <span>Edit Profile &amp; Socials</span>
+                      </button>
+                    ) : (
+                      <div className="text-[11px] font-semibold text-white/80 flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5 text-white/90" />
+                        <span>Daffodil International University</span>
+                      </div>
                     )}
-                    {targetProfile.telegram_link && (
-                      <a 
-                        href={formatSocialLink('telegram', targetProfile.telegram_link)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="social-icon hover:scale-105 transition-transform" 
-                        style={{ background: '#0088cc' }}
-                        title="Telegram Profile"
-                      >
-                        T
-                      </a>
-                    )}
-                    {targetProfile.whatsapp_link && (
-                      <a 
-                        href={formatSocialLink('whatsapp', targetProfile.whatsapp_link)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="social-icon hover:scale-105 transition-transform" 
-                        style={{ background: '#25d366' }}
-                        title="WhatsApp Contact"
-                      >
-                        W
-                      </a>
-                    )}
+                  </div>
+                </div>
+
+                {/* 3D Elevated Hero Stat Tiles */}
+                <div className="profile-hero-stats">
+                  <div className="profile-stat-3d stat">
+                    <div className="profile-stat-icon">
+                      <Zap className="w-4 h-4 text-amber-300 fill-amber-300/30" />
+                    </div>
+                    <b>{targetProfile.points}</b>
+                    <span>points</span>
+                  </div>
+
+                  <div className="profile-stat-3d stat">
+                    <div className="profile-stat-icon">
+                      <Flame className="w-4 h-4 text-orange-300 fill-orange-300/30" />
+                    </div>
+                    <b>{targetProfile.current_streak}</b>
+                    <span>day streak</span>
+                  </div>
+
+                  <div className="profile-stat-3d stat">
+                    <div className="profile-stat-icon">
+                      <Trophy className="w-4 h-4 text-yellow-300 fill-yellow-300/30" />
+                    </div>
+                    <b>{targetBatchRank}</b>
+                    <span>in batch</span>
                   </div>
                 </div>
               </div>
 
-              {/* Right: Completed Skills */}
-              <div>
-                <div className="section-title">Completed skills</div>
+              {/* Profile Grid (Left Details + Right Skills) */}
+              <div className="profile-grid">
                 
-                {selectedUserCompletedProgress.length > 0 ? (
-                  selectedUserCompletedProgress.map((cs) => {
-                    const sk = skills.find(s => s.id === cs.skill_id) || { name: 'Skill', icon: 'S', bg_color: '#6c5ce7' };
-                    return (
-                      <div key={cs.id} className="completed-skill-card">
-                        <div className="icon" style={{ background: sk.bg_color || '#e84393' }}>
-                          {sk.icon || 'S'}
-                        </div>
-                        <div className="info">
-                          <h5>{sk.name}</h5>
-                          <p>Finished on time (+10 pts)</p>
-                        </div>
-                        <div className="time-badge">Completed</div>
+                {/* Left Column: Academic Credentials & Contact Channels */}
+                <div>
+                  <div className="info-card profile-card-3d" id="profile-details-card">
+                    <div className="section-title flex items-center gap-2 mb-4">
+                      <div className="w-7 h-7 rounded-lg bg-[#6c5ce7]/10 text-[#6c5ce7] flex items-center justify-center text-xs font-black">
+                        <GraduationCap className="w-4 h-4" />
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="bg-white border border-[#e4e5ee] rounded-2xl p-6 text-center text-xs text-[#8a8ca3]">
-                    No completed skills recorded yet for this student.
+                      <span>Student Identity &amp; Details</span>
+                    </div>
+
+                    <div className="profile-info-rows-list space-y-1">
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <GraduationCap className="w-3.5 h-3.5 text-[#6c5ce7]" />
+                          <span>University</span>
+                        </span>
+                        <span className="text-xs font-bold text-[#1a1c2e] text-right">
+                          Daffodil Int. University
+                        </span>
+                      </div>
+
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Department</span>
+                        </span>
+                        <span className="text-xs font-bold text-[#1a1c2e] text-right">
+                          {targetProfile.department || 'CSE'}
+                        </span>
+                      </div>
+
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <Hash className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Batch</span>
+                        </span>
+                        <span className="text-xs font-bold text-[#1a1c2e] text-right">
+                          {targetProfile.batch_number || 'General'}
+                        </span>
+                      </div>
+
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <Hash className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Roll / Student ID</span>
+                        </span>
+                        <span className="text-xs font-mono font-bold text-[#1a1c2e] text-right">
+                          {targetProfile.roll_number || 'Not provided'}
+                        </span>
+                      </div>
+
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Skills completed</span>
+                        </span>
+                        <span className="text-xs font-extrabold text-[#6c5ce7] text-right">
+                          {targetCompletedSkills.length}
+                        </span>
+                      </div>
+
+                      <div className="info-row">
+                        <span className="flex items-center gap-1.5 text-xs text-[#8a8ca3]">
+                          <Flame className="w-3.5 h-3.5 text-orange-500" />
+                          <span>Longest streak</span>
+                        </span>
+                        <span className="text-xs font-extrabold text-orange-600 text-right">
+                          {targetProfile.longest_streak || targetProfile.current_streak} days
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Social & Peer Communication Contacts */}
+                    <div className="pt-4 mt-4 border-t border-[#f0f1f7]">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8a8ca3] mb-3 flex items-center justify-between">
+                        <span>Peer Contact Channels</span>
+                        {isOwn && (
+                          <button
+                            onClick={() => setCurrentPage('profile-setup')}
+                            className="text-[10px] text-[#6c5ce7] hover:underline font-bold"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+
+                      {(targetProfile.fb_link || targetProfile.telegram_link || targetProfile.whatsapp_link) ? (
+                        <div className="social-links-row flex flex-wrap gap-2.5">
+                          {targetProfile.fb_link && (
+                            <a 
+                              href={formatSocialLink('facebook', targetProfile.fb_link)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="social-icon-3d social-fb flex items-center gap-2 px-3 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-xs" 
+                              title="Facebook Profile"
+                              id="btn-social-fb"
+                            >
+                              <span className="font-black text-sm">f</span>
+                              <span className="text-xs">Facebook</span>
+                              <ExternalLink className="w-3 h-3 opacity-70 ml-auto" />
+                            </a>
+                          )}
+                          {targetProfile.telegram_link && (
+                            <a 
+                              href={formatSocialLink('telegram', targetProfile.telegram_link)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="social-icon-3d social-tg flex items-center gap-2 px-3 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-xs" 
+                              title="Telegram Profile"
+                              id="btn-social-tg"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span className="text-xs">Telegram</span>
+                              <ExternalLink className="w-3 h-3 opacity-70 ml-auto" />
+                            </a>
+                          )}
+                          {targetProfile.whatsapp_link && (
+                            <a 
+                              href={formatSocialLink('whatsapp', targetProfile.whatsapp_link)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="social-icon-3d social-wa flex items-center gap-2 px-3 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-xs" 
+                              title="WhatsApp Contact"
+                              id="btn-social-wa"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                              <span className="text-xs">WhatsApp</span>
+                              <ExternalLink className="w-3 h-3 opacity-70 ml-auto" />
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-center text-xs text-[#8a8ca3]">
+                          No public contact links added yet.
+                          {isOwn && (
+                            <div className="mt-1.5">
+                              <button
+                                onClick={() => setCurrentPage('profile-setup')}
+                                className="text-xs font-bold text-[#6c5ce7] hover:underline"
+                              >
+                                + Add Social Contacts
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Right Column: Completed Skills */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="section-title" style={{ margin: 0 }}>
+                      Completed skills ({targetCompletedSkills.length})
+                    </div>
+                  </div>
+                  
+                  {targetCompletedSkills.length > 0 ? (
+                    <div className="space-y-3">
+                      {targetCompletedSkills.map((cs) => {
+                        const sk = skills.find(s => s.id === cs.skill_id) || { name: 'Skill Track', icon: '⚡', bg_color: '#6c5ce7', difficulty: 'Sprint' };
+                        return (
+                          <div 
+                            key={cs.id} 
+                            className="completed-skill-card profile-skill-3d-card group cursor-pointer hover:border-[#6c5ce7] transition-all"
+                            onClick={() => {
+                              setSelectedSkillId(cs.skill_id);
+                              setCurrentPage('roadmap');
+                            }}
+                          >
+                            <div className="icon skill-3d-badge" style={{ background: sk.bg_color || '#e84393' }}>
+                              {sk.icon || '⚡'}
+                            </div>
+                            <div className="info min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h5 className="text-sm font-bold text-[#1a1c2e] group-hover:text-[#6c5ce7] transition-colors truncate">
+                                  {sk.name}
+                                </h5>
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-[#f1eefe] text-[#6c5ce7] border border-[#6c5ce7]/20">
+                                  +10 pts
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#8a8ca3] mt-0.5">Finished timed challenge curriculum on schedule</p>
+                            </div>
+                            <div className="time-badge 3d-badge-pill flex items-center gap-1">
+                              <Check className="w-3 h-3 text-[#00b894]" />
+                              <span>Completed</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="empty-profile-skills-card bg-white border border-[#e4e5ee] rounded-2xl p-8 text-center text-xs text-[#8a8ca3] shadow-xs">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6c5ce7] mx-auto flex items-center justify-center mb-3">
+                        <BookOpen className="w-6 h-6" />
+                      </div>
+                      <h4 className="font-bold text-sm text-[#1a1c2e] mb-1">No Completed Challenges Yet</h4>
+                      <p className="max-w-xs mx-auto text-xs text-[#8a8ca3] mb-4">
+                        {isOwn 
+                          ? "You haven't completed any timed challenges yet. Pick a skill track to start learning!" 
+                          : "This student is currently working on their roadmap milestones."}
+                      </p>
+                      {isOwn && (
+                        <button
+                          onClick={() => setCurrentPage('discover')}
+                          className="btn-challenge-cta px-4 py-2 text-xs font-bold rounded-xl inline-flex items-center gap-1.5"
+                        >
+                          <span>Explore Roadmaps</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
               </div>
 
             </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* PAGE 9 — ADMIN PANEL */}

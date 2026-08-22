@@ -47,43 +47,43 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
     switch (r.format) {
       case 'pdf':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/80">
-            <FileText className="w-3.5 h-3.5 text-rose-500" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+            <FileText className="w-3.5 h-3.5 text-rose-500 transition-transform group-hover:scale-110" />
             PDF Material
           </span>
         );
       case 'drive':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200/80">
-            <FolderOpen className="w-3.5 h-3.5 text-amber-600" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+            <FolderOpen className="w-3.5 h-3.5 text-amber-600 transition-transform group-hover:scale-110" />
             Google Drive
           </span>
         );
       case 'youtube':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200/80">
-            <Youtube className="w-3.5 h-3.5 fill-current" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200/80 shadow-2xs">
+            <Youtube className="w-3.5 h-3.5 fill-current transition-transform group-hover:scale-110" />
             Video Tutorial
           </span>
         );
       case 'github':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300">
-            <Github className="w-3.5 h-3.5" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300 shadow-2xs">
+            <Github className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
             GitHub Repo
           </span>
         );
       case 'article':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-            <BookOpen className="w-3.5 h-3.5" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+            <BookOpen className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
             Reading Guide
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/80">
-            <Globe className="w-3.5 h-3.5 text-indigo-600" />
+          <span className="resource-badge-3d inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs">
+            <Globe className="w-3.5 h-3.5 text-indigo-600 transition-transform group-hover:scale-110" />
             Official Documentation
           </span>
         );
@@ -98,7 +98,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
             href={r.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="resource-action-btn inline-flex items-center gap-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-rose-600" />
             <span>Open PDF Note</span>
@@ -111,7 +111,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
             href={r.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="resource-action-btn inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
           >
             <FolderOpen className="w-3.5 h-3.5 text-amber-600" />
             <span>Open Drive Folder</span>
@@ -124,7 +124,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
             href={r.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="resource-action-btn inline-flex items-center gap-1.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200/80 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
           >
             <Youtube className="w-3.5 h-3.5 fill-current" />
             <span>Watch Tutorial</span>
@@ -137,7 +137,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
             href={r.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="resource-action-btn inline-flex items-center gap-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
           >
             <Github className="w-3.5 h-3.5" />
             <span>View Code</span>
@@ -150,7 +150,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
             href={r.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-[#6c5ce7] border border-purple-200/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="resource-action-btn inline-flex items-center gap-1.5 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-[#6c5ce7] border border-purple-200/80 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
           >
             <Globe className="w-3.5 h-3.5 text-[#6c5ce7]" />
             <span>Open Docs</span>
@@ -171,7 +171,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs mt-6 transition-all ${className}`} 
+      className={`resource-section-3d bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs mt-6 transition-all ${className}`} 
       id="official-documentation-resources"
     >
       {/* 1. Header Bar */}
@@ -188,7 +188,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
               <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
                 Official Documentation &amp; References
               </h4>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#6c5ce7] border border-purple-100">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#6c5ce7] border border-purple-100 shadow-2xs">
                 {resources.length} {resources.length === 1 ? 'material' : 'materials'}
               </span>
             </div>
@@ -202,7 +202,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
         {isAdmin && onAddResource && (
           <button
             onClick={onAddResource}
-            className="self-start md:self-auto px-4 py-2.5 bg-[#6c5ce7] hover:bg-[#5848c2] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer shrink-0"
+            className="admin-add-btn-3d self-start md:self-auto px-4 py-2.5 bg-[#6c5ce7] hover:bg-[#5848c2] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Resource / PDF</span>
@@ -277,7 +277,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
           {displayedResources.map((res) => (
             <div 
               key={res.id} 
-              className="bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#6c5ce7]/50 rounded-2xl p-5 transition-all shadow-2xs hover:shadow-xs flex flex-col justify-between group"
+              className="resource-card-3d bg-white hover:bg-slate-50/50 border border-slate-200 rounded-2xl p-5 transition-all flex flex-col justify-between group"
             >
               <div>
                 {/* Format Tag on Left & Admin Delete on Right */}
@@ -287,7 +287,7 @@ export const SkillResourcesSection: React.FC<SkillResourcesSectionProps> = ({
                   {isAdmin && onDeleteResource && (
                     <button
                       onClick={() => onDeleteResource(res.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                      className="delete-resource-btn-3d text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
                       title="Delete Resource"
                     >
                       <Trash2 className="w-4 h-4" />

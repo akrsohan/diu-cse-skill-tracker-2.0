@@ -1,7 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PageType, Profile } from '../types';
 import { getMainName } from '../lib/nameHelper';
-import { Shield, User, LogOut, CheckCircle, Settings, Flame, Zap, ChevronDown, Compass, LayoutDashboard, Trophy, Monitor, MessageSquare } from 'lucide-react';
+import { 
+  Shield, 
+  User, 
+  LogOut, 
+  CheckCircle, 
+  Settings, 
+  Flame, 
+  Zap, 
+  ChevronDown, 
+  Compass, 
+  LayoutDashboard, 
+  Trophy, 
+  Monitor, 
+  MessageSquare,
+  Sun,
+  Moon
+} from 'lucide-react';
 
 interface NavbarProps {
   currentPage: PageType;
@@ -12,6 +28,8 @@ interface NavbarProps {
   onSelectUserForProfile?: (userId: string) => void;
   onOpenSendFeedback?: () => void;
   onOpenMyFeedback?: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,7 +40,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignOut,
   onSelectUserForProfile,
   onOpenSendFeedback,
-  onOpenMyFeedback
+  onOpenMyFeedback,
+  theme = 'light',
+  onToggleTheme
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -130,73 +150,126 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* User Avatar & Profile Dropdown */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button 
-            type="button"
-            className="flex items-center gap-2.5 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] text-white border border-white/20 rounded-full pl-1.5 pr-4 py-1.5 sm:py-2 transition-all shadow-lg shadow-blue-600/30 group focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            id="navbar-user-avatar-btn"
-            aria-expanded={dropdownOpen}
-            aria-haspopup="true"
-          >
-            {/* Avatar Icon */}
-            {currentUser.avatar_url ? (
-              <img 
-                src={currentUser.avatar_url} 
-                alt={currentUser.full_name} 
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-white/50 shadow-inner group-hover:scale-105 transition-transform" 
-              />
-            ) : (
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-inner ring-2 ring-white/40 group-hover:scale-105 transition-transform">
-                {getInitials(currentUser.full_name)}
-              </div>
-            )}
-            
-            {/* Name */}
-            <span className="text-sm font-black tracking-wide text-white uppercase leading-none select-none">
-              {getMainName(currentUser.full_name)}
-            </span>
-
-            <ChevronDown className={`w-4 h-4 text-white/90 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {/* Clean Modern White Dropdown Menu (Matches Reference) */}
-          {dropdownOpen && (
-            <div 
-              className="absolute right-0 mt-3 w-[calc(100vw-32px)] max-w-[320px] sm:w-[320px] bg-white border border-slate-100 rounded-[28px] shadow-2xl shadow-slate-950/25 p-5 sm:p-6 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150"
-              id="navbar-user-dropdown"
+        {/* Right Controls: Theme Toggle & User Avatar Dropdown */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+          
+          {/* Dark / Light Mode Toggle Button */}
+          {onToggleTheme && (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#0e101a] hover:bg-white/10 border border-white/10 shadow-inner transition-all group focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle theme mode"
+              id="navbar-theme-toggle-btn"
             >
-              {/* User Profile Header */}
-              <div className="pb-4 border-b border-slate-100">
-                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight lowercase truncate">
-                  {getMainName(currentUser.full_name)}
-                </h3>
-                <p className="text-[11px] font-bold text-slate-400 lowercase tracking-wider mt-0.5 font-mono truncate">
-                  {currentUser.email || 'mdsohanali636@gmail.com'}
-                </p>
-                
-                {/* Badges row: ADMIN, VERIFIED */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  {currentUser.is_admin && (
-                    <span className="px-3 py-1 rounded-full bg-[#eff6ff] border border-[#bfdbfe] text-[#2563eb] text-[11px] font-black uppercase tracking-wider shadow-2xs">
-                      ADMIN
-                    </span>
-                  )}
-                  {currentUser.profile_completed ? (
-                    <span className="px-3 py-1 rounded-full bg-[#ecfdf5] border border-[#a7f3d0] text-[#059669] text-[11px] font-black uppercase tracking-wider shadow-2xs">
-                      VERIFIED
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-bold uppercase tracking-wider">
-                      SETUP REQUIRED
-                    </span>
-                  )}
-                </div>
-              </div>
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+              ) : (
+                <Moon className="w-5 h-5 text-indigo-300 group-hover:-rotate-12 transition-transform duration-300" />
+              )}
+            </button>
+          )}
 
-              {/* Menu items */}
-              <div className="py-3 space-y-1.5">
+          {/* User Avatar & Profile Dropdown */}
+          <div className="relative shrink-0" ref={dropdownRef}>
+            <button 
+              type="button"
+              className="flex items-center gap-2.5 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] text-white border border-white/20 rounded-full pl-1.5 pr-4 py-1.5 sm:py-2 transition-all shadow-lg shadow-blue-600/30 group focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              id="navbar-user-avatar-btn"
+              aria-expanded={dropdownOpen}
+              aria-haspopup="true"
+            >
+              {/* Avatar Icon */}
+              {currentUser.avatar_url ? (
+                <img 
+                  src={currentUser.avatar_url} 
+                  alt={currentUser.full_name} 
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-white/50 shadow-inner group-hover:scale-105 transition-transform" 
+                />
+              ) : (
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-inner ring-2 ring-white/40 group-hover:scale-105 transition-transform">
+                  {getInitials(currentUser.full_name)}
+                </div>
+              )}
+              
+              {/* Name */}
+              <span className="text-sm font-black tracking-wide text-white uppercase leading-none select-none">
+                {getMainName(currentUser.full_name)}
+              </span>
+
+              <ChevronDown className={`w-4 h-4 text-white/90 group-hover:text-white transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Clean Modern White Dropdown Menu (Matches Reference) */}
+            {dropdownOpen && (
+              <div 
+                className="absolute right-0 mt-3 w-[calc(100vw-32px)] max-w-[320px] sm:w-[320px] bg-white border border-slate-100 rounded-[28px] shadow-2xl shadow-slate-950/25 p-5 sm:p-6 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150"
+                id="navbar-user-dropdown"
+              >
+                {/* User Profile Header */}
+                <div className="pb-4 border-b border-slate-100">
+                  <h3 className="text-xl font-extrabold text-slate-900 tracking-tight lowercase truncate">
+                    {getMainName(currentUser.full_name)}
+                  </h3>
+                  <p className="text-[11px] font-bold text-slate-400 lowercase tracking-wider mt-0.5 font-mono truncate">
+                    {currentUser.email || 'mdsohanali636@gmail.com'}
+                  </p>
+                  
+                  {/* Badges row: ADMIN, VERIFIED */}
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {currentUser.is_admin && (
+                      <span className="px-3 py-1 rounded-full bg-[#eff6ff] border border-[#bfdbfe] text-[#2563eb] text-[11px] font-black uppercase tracking-wider shadow-2xs">
+                        ADMIN
+                      </span>
+                    )}
+                    {currentUser.profile_completed ? (
+                      <span className="px-3 py-1 rounded-full bg-[#ecfdf5] border border-[#a7f3d0] text-[#059669] text-[11px] font-black uppercase tracking-wider shadow-2xs">
+                        VERIFIED
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-bold uppercase tracking-wider">
+                        SETUP REQUIRED
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Menu items */}
+                <div className="py-3 space-y-1.5">
+                  {/* Theme Mode Toggle in Dropdown */}
+                  {onToggleTheme && (
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 text-slate-900 transition-all text-left group cursor-pointer"
+                      onClick={() => {
+                        onToggleTheme();
+                      }}
+                      id="dropdown-theme-toggle"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-2xl bg-slate-100/90 text-slate-800 flex items-center justify-center group-hover:bg-slate-200 transition-colors shrink-0">
+                          {theme === 'dark' ? (
+                            <Sun className="w-5 h-5 text-amber-500" />
+                          ) : (
+                            <Moon className="w-5 h-5 text-indigo-500" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">
+                            {theme === 'dark' ? 'Light Theme' : 'Dark Theme'}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-medium">
+                            {theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 uppercase">
+                        {theme === 'dark' ? 'Dark' : 'Light'}
+                      </span>
+                    </button>
+                  )}
                 {/* My Dashboard */}
                 <button 
                   type="button"
@@ -354,6 +427,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
           )}
+          </div>
         </div>
 
       </div>
@@ -394,6 +468,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Shield className="w-3.5 h-3.5 text-purple-400" />
             <span>Admin</span>
+          </button>
+        )}
+
+        {onToggleTheme && (
+          <button 
+            type="button"
+            className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 select-none whitespace-nowrap shrink-0 text-amber-300 hover:text-white hover:bg-white/5 cursor-pointer ml-auto"
+            onClick={onToggleTheme}
+            id="mobile-nav-theme-toggle"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-indigo-300" />
+                <span>Dark</span>
+              </>
+            )}
           </button>
         )}
       </div>
