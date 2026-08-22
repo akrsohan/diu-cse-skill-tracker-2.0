@@ -69,6 +69,8 @@ import {
 } from './lib/supabaseService';
 import { 
   CheckCircle2, 
+  CheckCircle,
+  UserCheck,
   Clock, 
   Flame, 
   Trophy, 
@@ -632,12 +634,21 @@ export default function App() {
 
   // Derived current skill and steps
   const currentSkill = useMemo(() => {
-    return skills.find(s => s.id === selectedSkillId) || skills[0];
+    return skills.find(s => s.id === selectedSkillId) || skills[0] || { 
+      id: '', 
+      name: 'No Skill Available', 
+      description: 'Please add skills from the admin panel.', 
+      icon: '⚡', 
+      bg_color: '#6c5ce7', 
+      difficulty: 'Beginner', 
+      field_id: '' 
+    };
   }, [skills, selectedSkillId]);
 
   const currentSkillSteps = useMemo(() => {
-    return roadmapSteps[selectedSkillId] || [];
-  }, [roadmapSteps, selectedSkillId]);
+    if (!currentSkill || !currentSkill.id) return [];
+    return roadmapSteps[currentSkill.id] || [];
+  }, [roadmapSteps, currentSkill]);
 
   // Target profile for Public Profile view
   const targetProfile = useMemo(() => {
@@ -1476,43 +1487,123 @@ export default function App() {
       {/* ========================================================================= */}
       {/* PAGE 2 — PROFILE SETUP & SETTINGS */}
       {/* ========================================================================= */}
-      {currentPage === 'profile-setup' && (
+      {currentPage === 'profile-setup' && (() => {
+        const step1Done = Boolean(setupFullName.trim());
+        const step2Done = Boolean(setupDepartment.trim() && setupBatch.trim() && setupRoll.trim());
+        const step3Done = Boolean(setupFb.trim() || setupTelegram.trim() || setupWhatsapp.trim());
+        
+        let activeStepNum = 1;
+        if (step1Done && !step2Done) activeStepNum = 2;
+        else if (step1Done && step2Done && !step3Done) activeStepNum = 3;
+        else if (step1Done && step2Done && step3Done) activeStepNum = 3;
+
+        const progressPercent = (step1Done ? 33.3 : 0) + (step2Done ? 33.3 : 0) + (step3Done ? 33.4 : 0);
+
+        return (
         <div className="page" id="page-profile-setup">
           <div className="page-tag">PAGE 2 — STUDENT PROFILE SETTINGS</div>
 
-          <div className="profile-edit-wrapper">
+          <div className="profile-edit-wrapper w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
             
-            {/* Header / Breadcrumb Bar */}
+            {/* Header / Breadcrumb Bar with 3D Identity Visual */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <div>
                 {currentUser.profile_completed && (
                   <button 
                     onClick={() => setCurrentPage('profile')}
-                    className="text-xs font-bold text-[#6c5ce7] hover:underline flex items-center gap-1.5 mb-2 transition-all"
+                    className="text-xs font-bold text-[#6c5ce7] hover:underline flex items-center gap-1.5 mb-2 transition-all cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Back to My Profile
                   </button>
                 )}
-                <h1 className="text-2xl sm:text-3xl font-black text-[#1a1c2e] tracking-tight">
-                  {currentUser.profile_completed ? 'Edit Profile & Settings' : 'Complete Your Profile'}
-                </h1>
-                <p className="text-xs text-[#8a8ca3] mt-1">
-                  Keep your academic credentials and peer contact channels accurate for leaderboard rankings.
-                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#6c5ce7] to-[#8477f3] text-white flex items-center justify-center shadow-md shadow-[#6c5ce7]/30 shrink-0">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1a1c2e] tracking-tight">
+                      {currentUser.profile_completed ? 'Edit Profile & Settings' : 'Complete Your Profile'}
+                    </h1>
+                    <p className="text-xs text-[#8a8ca3] mt-0.5">
+                      Keep your academic credentials and peer contact channels accurate for leaderboard rankings.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {currentUser.email && (
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#e2e8f0] text-xs font-semibold text-[#64748b] shadow-xs">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>{currentUser.email}</span>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#e2e8f0] text-xs font-semibold text-[#64748b] shadow-xs self-start sm:self-auto">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="truncate max-w-[200px] sm:max-w-none">{currentUser.email}</span>
                 </div>
               )}
             </div>
 
+            {/* 2.5D Step / Journey Indicator Bar */}
+            <div className="setup-journey-card-3d mb-8 p-4 sm:p-5 rounded-2xl bg-white border border-[#e4e5ee] shadow-sm">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#6c5ce7] bg-[#f1eefe] px-2.5 py-0.5 rounded-md border border-[#6c5ce7]/20">
+                    Step {activeStepNum} of 3
+                  </span>
+                  <span className="text-xs font-bold text-[#1a1c2e] hidden xs:inline">
+                    {activeStepNum === 1 ? 'Personal Info & Avatar' : activeStepNum === 2 ? 'Academic Credentials' : 'Peer Social Channels'}
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-[#64748b]">
+                  <span className="font-mono text-[#6c5ce7]">{Math.round(progressPercent)}%</span> Completed
+                </div>
+              </div>
+
+              {/* Progress Connection Line */}
+              <div className="relative w-full h-2 rounded-full bg-[#e2e8f0] overflow-hidden mb-5">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#6c5ce7] via-[#8477f3] to-[#00b894] rounded-full transition-all duration-500 ease-out shadow-xs"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              {/* 3D Step Pills Grid */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                {/* Step 1 */}
+                <div className={`step-badge-3d ${step1Done ? 'step-done' : activeStepNum === 1 ? 'step-active' : 'step-upcoming'}`}>
+                  <div className="step-circle-3d">
+                    {step1Done ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <span>1</span>}
+                  </div>
+                  <div className="step-label-group">
+                    <span className="step-num-text">Step 1</span>
+                    <span className="step-title-text">Personal Info</span>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className={`step-badge-3d ${step2Done ? 'step-done' : activeStepNum === 2 ? 'step-active' : 'step-upcoming'}`}>
+                  <div className="step-circle-3d">
+                    {step2Done ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <span>2</span>}
+                  </div>
+                  <div className="step-label-group">
+                    <span className="step-num-text">Step 2</span>
+                    <span className="step-title-text">Academic ID</span>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className={`step-badge-3d ${step3Done ? 'step-done' : activeStepNum === 3 ? 'step-active' : 'step-upcoming'}`}>
+                  <div className="step-circle-3d">
+                    {step3Done ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <span>3</span>}
+                  </div>
+                  <div className="step-label-group">
+                    <span className="step-num-text">Step 3</span>
+                    <span className="step-title-text">Peer Contacts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Error Banner */}
             {setupError && (
-              <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200/80 text-red-600 text-xs font-semibold flex items-center gap-3 shadow-xs">
-                <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+              <div className="mb-6 p-4 rounded-2xl bg-red-50/95 border-1.5 border-red-300 text-red-700 text-xs sm:text-sm font-bold flex items-center gap-3 shadow-md shadow-red-500/10">
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-500 animate-bounce" />
                 <span>{setupError}</span>
               </div>
             )}
@@ -1521,15 +1612,16 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* Left Column: Identity Preview & Avatar (4 cols) */}
-                <div className="lg:col-span-4 space-y-6">
+                <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
                   <div className="profile-edit-card text-center">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#8a8ca3] mb-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#8a8ca3] mb-4 flex items-center justify-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#6c5ce7]" />
                       Profile Avatar
                     </div>
 
-                    {/* Interactive Avatar Upload */}
+                    {/* Interactive 3D Avatar Upload */}
                     <div className="relative inline-block mb-3">
-                      <div className="profile-avatar-uploader">
+                      <div className="profile-avatar-uploader profile-avatar-uploader-3d">
                         {setupAvatarPreview ? (
                           <img src={setupAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -1568,7 +1660,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setSetupAvatarPreview(null)}
-                            className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1"
+                            className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Remove
                           </button>
@@ -1578,29 +1670,37 @@ export default function App() {
 
                     {/* Preview Student Identity Card */}
                     <div className="pt-4 border-t border-[#f1f5f9] text-left space-y-2">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8a8ca3]">Live Preview</div>
-                      <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#8a8ca3]">
+                        <span>Live Preview</span>
+                        <span className="text-[9px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Live Sync
+                        </span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] shadow-2xs">
                         <div className="font-bold text-sm text-[#1a1c2e] truncate">
                           {setupFullName || 'Student Name'}
                         </div>
-                        <div className="text-xs text-[#64748b] mt-0.5">
-                          {setupDepartment || 'Dept'} · {setupBatch || 'Batch'}
+                        <div className="text-xs text-[#64748b] mt-0.5 flex items-center gap-1.5">
+                          <span className="font-semibold text-[#6c5ce7]">{setupDepartment || 'Department'}</span>
+                          <span>·</span>
+                          <span>{setupBatch || 'Batch'}</span>
                         </div>
-                        <div className="text-[11px] font-mono text-[#8a8ca3] mt-1">
-                          ID: {setupRoll || 'Not Set'}
+                        <div className="text-[11px] font-mono text-[#8a8ca3] mt-1.5 flex items-center gap-1">
+                          <span className="text-[9.5px] uppercase font-bold bg-slate-200/80 px-1 py-0.5 rounded text-slate-700">ID</span>
+                          <span>{setupRoll || 'Not Set'}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Academic Stat Pill */}
                     <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-                      <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100">
+                      <div className="p-2.5 rounded-xl bg-purple-50/90 border border-purple-100/90 shadow-2xs">
                         <div className="text-xs font-black text-[#6c5ce7]">⚡ {currentUser.points}</div>
-                        <div className="text-[10px] text-[#64748b] font-medium">Total Points</div>
+                        <div className="text-[10px] text-[#64748b] font-semibold">Total Points</div>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-100">
+                      <div className="p-2.5 rounded-xl bg-orange-50/90 border border-orange-100/90 shadow-2xs">
                         <div className="text-xs font-black text-orange-600">🔥 {currentUser.current_streak}d</div>
-                        <div className="text-[10px] text-[#64748b] font-medium">Active Streak</div>
+                        <div className="text-[10px] text-[#64748b] font-semibold">Active Streak</div>
                       </div>
                     </div>
                   </div>
@@ -1612,7 +1712,7 @@ export default function App() {
                   {/* Card 1: Academic Credentials */}
                   <div className="profile-edit-card space-y-4">
                     <div className="flex items-center gap-2.5 pb-3 border-b border-[#f1f5f9]">
-                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-[#6c5ce7] flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-[#6c5ce7] flex items-center justify-center shadow-xs">
                         <GraduationCap className="w-4 h-4" />
                       </div>
                       <div>
@@ -1627,7 +1727,9 @@ export default function App() {
                         Full Name <span className="text-rose-500">*</span>
                       </label>
                       <div className="input-with-icon-wrap">
-                        <User className="icon-leading" />
+                        <div className="icon-leading-box">
+                          <User className="w-4 h-4 text-[#6c5ce7]" />
+                        </div>
                         <input 
                           type="text" 
                           className="input-styled" 
@@ -1647,7 +1749,9 @@ export default function App() {
                           Department <span className="text-rose-500">*</span>
                         </label>
                         <div className="input-with-icon-wrap">
-                          <Building2 className="icon-leading" />
+                          <div className="icon-leading-box">
+                            <Building2 className="w-4 h-4 text-[#6c5ce7]" />
+                          </div>
                           <input 
                             type="text"
                             className="input-styled" 
@@ -1666,7 +1770,9 @@ export default function App() {
                           Batch Number <span className="text-rose-500">*</span>
                         </label>
                         <div className="input-with-icon-wrap">
-                          <Hash className="icon-leading" />
+                          <div className="icon-leading-box">
+                            <Hash className="w-4 h-4 text-[#6c5ce7]" />
+                          </div>
                           <input 
                             type="text"
                             className="input-styled" 
@@ -1687,7 +1793,9 @@ export default function App() {
                         Student ID / Roll Number <span className="text-rose-500">*</span>
                       </label>
                       <div className="input-with-icon-wrap">
-                        <Hash className="icon-leading" />
+                        <div className="icon-leading-box">
+                          <Hash className="w-4 h-4 text-[#6c5ce7]" />
+                        </div>
                         <input 
                           type="text" 
                           className="input-styled" 
@@ -1704,7 +1812,7 @@ export default function App() {
                   {/* Card 2: Social & Peer Communication Contacts */}
                   <div className="profile-edit-card space-y-4">
                     <div className="flex items-center gap-2.5 pb-3 border-b border-[#f1f5f9]">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
                         <Share2 className="w-4 h-4" />
                       </div>
                       <div>
@@ -1721,7 +1829,9 @@ export default function App() {
                         Facebook Profile URL or Username
                       </label>
                       <div className="input-with-icon-wrap">
-                        <span className="icon-leading text-blue-600 font-bold text-sm">f</span>
+                        <div className="icon-leading-box bg-[#1877f2]/10 text-[#1877f2]">
+                          <span className="font-black text-sm">f</span>
+                        </div>
                         <input 
                           type="text" 
                           className="input-styled" 
@@ -1740,7 +1850,9 @@ export default function App() {
                           Telegram Handle / Username
                         </label>
                         <div className="input-with-icon-wrap">
-                          <MessageSquare className="icon-leading text-sky-500" />
+                          <div className="icon-leading-box bg-[#0088cc]/10 text-[#0088cc]">
+                            <MessageSquare className="w-4 h-4" />
+                          </div>
                           <input 
                             type="text" 
                             className="input-styled" 
@@ -1758,7 +1870,9 @@ export default function App() {
                           WhatsApp Number or Username
                         </label>
                         <div className="input-with-icon-wrap">
-                          <Phone className="icon-leading text-emerald-500" />
+                          <div className="icon-leading-box bg-[#25d366]/10 text-[#25d366]">
+                            <Phone className="w-4 h-4" />
+                          </div>
                           <input 
                             type="text" 
                             className="input-styled" 
@@ -1773,10 +1887,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Prominent, Centered & Large Action Buttons */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 sm:p-8 mb-20 flex flex-col items-center justify-center gap-5 shadow-sm text-center">
-                    <div className="text-xs sm:text-sm text-[#64748b] font-medium">
-                      Changes will be saved immediately and synced live to your Supabase cloud profile.
+                  {/* Prominent 3D Action Card & Buttons */}
+                  <div className="profile-edit-card mb-16 sm:mb-20 flex flex-col items-center justify-center gap-5 text-center">
+                    <div className="text-xs sm:text-sm text-[#64748b] font-medium flex items-center gap-2 justify-center">
+                      <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span>Changes are saved securely and synced live to your Supabase cloud profile.</span>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-center gap-4 w-full sm:w-auto">
@@ -1784,21 +1899,21 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setCurrentPage('profile')}
-                          className="min-w-[160px] px-8 py-4 rounded-2xl border-2 border-[#e2e8f0] text-base font-bold text-[#475569] hover:bg-[#f8fafc] hover:border-[#cbd5e1] hover:text-[#1e293b] transition-all cursor-pointer shadow-xs active:scale-98"
+                          className="btn-setup-discard-3d min-w-[140px] sm:min-w-[160px] px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-sm sm:text-base font-bold text-[#475569] cursor-pointer"
                         >
                           Discard
                         </button>
                       )}
                       <button 
                         type="submit" 
-                        className="min-w-[220px] px-10 py-4 bg-[#6c5ce7] hover:bg-[#5b4cc4] text-white text-base font-extrabold rounded-2xl transition-all shadow-xl shadow-[#6c5ce7]/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
+                        className="btn-setup-save-3d min-w-[200px] sm:min-w-[240px] px-8 sm:px-10 py-3.5 sm:py-4 text-white text-sm sm:text-base font-extrabold rounded-2xl flex items-center justify-center gap-3 cursor-pointer"
                         disabled={setupLoading}
                         id="btn-save-profile-setup"
                       >
                         {setupLoading ? (
-                          <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Save className="w-6 h-6" />
+                          <Save className="w-5 h-5 sm:w-6 sm:h-6" />
                         )}
                         <span>{currentUser.profile_completed ? 'Save Changes' : 'Save & Enter Skill Hub →'}</span>
                       </button>
@@ -1811,7 +1926,8 @@ export default function App() {
             </form>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* PAGE 3 — DISCOVER SKILLS & FIELDS */}

@@ -46,7 +46,15 @@ export const AdminRoadmapSection: React.FC<AdminRoadmapSectionProps> = ({
 }) => {
   const [resourceFilter, setResourceFilter] = useState<'all' | 'documents' | 'references'>('all');
 
-  const currentSkill = skills.find(s => s.id === selectedSkillId) || skills[0];
+  const currentSkill = skills.find(s => s.id === selectedSkillId) || skills[0] || {
+    id: '',
+    name: 'No Skill Available',
+    description: 'Please add skills from the admin panel.',
+    icon: '⚡',
+    bg_color: '#6c5ce7',
+    difficulty: 'Beginner',
+    field_id: ''
+  };
   const currentSteps = roadmapSteps[currentSkill?.id || ''] || [];
   const currentResources = skillResources[currentSkill?.id || ''] || [];
 
